@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin, Bed, Bath, Maximize2, Star, ArrowRight } from 'lucide-react'
 import type { Property } from '@/types'
+import { formatPrice } from '@/lib/format'
 
 const statusConfig: Record<Property['status'], { label: string; className: string }> = {
   available: { label: 'Available', className: 'bg-emerald-500 text-white'  },
@@ -9,8 +10,9 @@ const statusConfig: Record<Property['status'], { label: string; className: strin
   rented:    { label: 'Rented',    className: 'bg-amber-500 text-white'    },
 }
 
-export default function PropertyCard({ property: p }: { property: Property }) {
+export default function PropertyCard({ property: p, priority = false }: { property: Property; priority?: boolean }) {
   const status = statusConfig[p.status] ?? statusConfig.available
+  const altText = [p.title, p.type, p.location].filter(Boolean).join(' — ')
 
   return (
     <div className="group bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col">
@@ -20,8 +22,9 @@ export default function PropertyCard({ property: p }: { property: Property }) {
         {p.images?.[0] ? (
           <Image
             src={p.images[0]}
-            alt={p.title}
+            alt={altText}
             fill
+            priority={priority}
             className="object-cover group-hover:scale-105 transition-transform duration-500"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
@@ -46,7 +49,7 @@ export default function PropertyCard({ property: p }: { property: Property }) {
         {/* Price overlay */}
         {p.price != null && (
           <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-sm font-bold">
-            ${p.price.toLocaleString()}
+            {formatPrice(p.price, p.currency)}
           </div>
         )}
       </div>

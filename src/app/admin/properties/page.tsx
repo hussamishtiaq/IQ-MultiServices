@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Plus, Edit, Trash2, Star, MapPin, Loader2, Home } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { formatPrice } from '@/lib/format'
 import type { Property } from '@/types'
 
 const statusClass: Record<Property['status'], string> = {
@@ -17,10 +18,16 @@ export default function AdminPropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading]       = useState(true)
   const [deleting, setDeleting]     = useState<string | null>(null)
+  const [error, setError]           = useState<string | null>(null)
 
   const load = async () => {
     const supabase = createClient()
-    const { data } = await supabase.from('properties').select('*').order('created_at', { ascending: false })
+    const { data, error: dbErr } = await supabase
+      .from('properties')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (dbErr) setError(dbErr.message)
     setProperties((data as Property[]) ?? [])
     setLoading(false)
   }
@@ -30,10 +37,15 @@ export default function AdminPropertiesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this property? This cannot be undone.')) return
     setDeleting(id)
+    setError(null)
     const supabase = createClient()
-    await supabase.from('properties').delete().eq('id', id)
-    setProperties(prev => prev.filter(p => p.id !== id))
+    const { error: delErr } = await supabase.from('properties').delete().eq('id', id)
     setDeleting(null)
+    if (delErr) {
+      setError(`Failed to delete: ${delErr.message}`)
+      return
+    }
+    setProperties(prev => prev.filter(p => p.id !== id))
   }
 
   return (
@@ -48,6 +60,12 @@ export default function AdminPropertiesPage() {
           <Plus size={16} /> Add Property
         </Link>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
@@ -108,7 +126,7 @@ export default function AdminPropertiesPage() {
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
                       {p.price != null ? (
-                        <span className="font-semibold text-emerald-700">${p.price.toLocaleString()}</span>
+                        <span className="font-semibold text-emerald-700">{formatPrice(p.price, p.currency)}</span>
                       ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-5 py-4">

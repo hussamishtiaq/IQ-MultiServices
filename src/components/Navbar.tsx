@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, Menu, X, Phone } from 'lucide-react'
+import { Building2, Menu, X, Phone, LayoutDashboard } from 'lucide-react'
 
 const navLinks = [
   { href: '/',           label: 'Home' },
@@ -66,6 +66,15 @@ export default function Navbar() {
               }`}>
               <Phone size={14} /> Contact Us
             </Link>
+            <Link href="/admin"
+              className={`ml-2 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                transparent
+                  ? 'text-white/60 hover:text-white hover:bg-white/10'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+              title="Admin Panel">
+              <LayoutDashboard size={15} />
+            </Link>
           </div>
 
           {/* Mobile hamburger */}
@@ -93,6 +102,10 @@ export default function Navbar() {
             <Link href="/contact" onClick={() => setOpen(false)}
               className="flex items-center gap-2 mx-1 px-4 py-2.5 bg-emerald-800 text-white text-sm font-semibold rounded-xl hover:bg-emerald-900 transition-colors">
               <Phone size={14} /> Contact Us
+            </Link>
+            <Link href="/admin" onClick={() => setOpen(false)}
+              className="flex items-center gap-2 mx-1 px-4 py-2.5 text-slate-400 text-sm font-medium rounded-xl hover:bg-slate-50 hover:text-slate-700 transition-colors">
+              <LayoutDashboard size={14} /> Admin Panel
             </Link>
           </div>
         )}

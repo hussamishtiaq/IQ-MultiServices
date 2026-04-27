@@ -67,3 +67,13 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 uppercase tracking-wide;
   }
 }
+
+/* ── Route transition progress bar ── */
+@keyframes route-progress {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(-15%); }
+  100% { transform: translateX(0); }
+}
+.animate-route-progress {
+  animation: route-progress 600ms ease-out forwards;
+}

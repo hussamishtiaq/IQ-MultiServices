@@ -18,9 +18,11 @@ export default function EditServicePage() {
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
+    let cancelled = false
     const load = async () => {
       const supabase = createClient()
       const { data } = await supabase.from('services').select('*').eq('id', id).single()
+      if (cancelled) return
       if (!data) { setError('Service not found.'); setLoading(false); return }
       const s = data as Service
       setForm({
@@ -32,6 +34,7 @@ export default function EditServicePage() {
       setLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [id])
 
   const handleSubmit = async (e: React.FormEvent) => {

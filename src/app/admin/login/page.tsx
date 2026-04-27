@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Building2, Mail, Lock, Eye, EyeOff, Loader2, CheckCircle2, Shield } from 'lucide-react'
+import Link from 'next/link'
+import { Building2, Mail, Lock, Eye, EyeOff, Loader2, CheckCircle2, Shield, ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const FEATURES = [
@@ -12,7 +12,6 @@ const FEATURES = [
 ]
 
 export default function AdminLoginPage() {
-  const router   = useRouter()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPw,   setShowPw]   = useState(false)
@@ -24,10 +23,11 @@ export default function AdminLoginPage() {
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password })
     if (authErr) { setError(authErr.message); setLoading(false); return }
-    router.push('/admin')
-    router.refresh()
+    if (!data.session) { setError('Sign-in returned no session. Please try again.'); setLoading(false); return }
+    // Hard navigation so middleware sees the freshly-written auth cookie on the next request
+    window.location.href = '/admin'
   }
 
   return (
@@ -90,6 +90,11 @@ export default function AdminLoginPage() {
             </div>
             <span className="font-bold text-slate-900 text-lg">IQ MultiServices</span>
           </div>
+
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-700 transition-colors mb-8 group">
+            <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
+            Back to site
+          </Link>
 
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Sign In</p>
           <h1 className="text-3xl font-bold text-slate-900 mb-1">Welcome back</h1>

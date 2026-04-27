@@ -60,13 +60,12 @@ export default function AdminSettingsPage() {
     setSaving(true); setError(null); setSaved(false)
 
     const supabase = createClient()
-    const updates = Object.entries(form).map(([key, value]) =>
-      supabase.from('site_settings').upsert({ key, value }, { onConflict: 'key' })
-    )
-    const results = await Promise.all(updates)
-    const err = results.find(r => r.error)
-    if (err?.error) {
-      setError(err.error.message)
+    const rows = Object.entries(form).map(([key, value]) => ({ key, value }))
+    const { error: dbErr } = await supabase
+      .from('site_settings')
+      .upsert(rows, { onConflict: 'key' })
+    if (dbErr) {
+      setError(dbErr.message)
     } else {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)

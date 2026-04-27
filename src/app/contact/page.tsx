@@ -2,10 +2,15 @@ import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { createClient } from '@/lib/supabase/server'
+import { safeContactHref } from '@/lib/safe-url'
 import { Phone, ChevronRight } from 'lucide-react'
 import type { Contact } from '@/types'
 
-export const metadata = { title: 'Contact Us | IQ MultiServices' }
+export const metadata = {
+  title: 'Contact Us',
+  description: 'Get in touch with IQ MultiServices. Reach us via email, phone, WhatsApp, and social media.',
+  alternates: { canonical: '/contact' },
+}
 
 const PLATFORM_ICONS: Record<string, string> = {
   email:     '✉️',
@@ -16,15 +21,6 @@ const PLATFORM_ICONS: Record<string, string> = {
   telegram:  '✈️',
   phone:     '📞',
   website:   '🌐',
-}
-
-function getHref(platform: string, value: string): string {
-  switch (platform) {
-    case 'email':    return `mailto:${value}`
-    case 'phone':    return `tel:${value}`
-    case 'whatsapp': return value.startsWith('http') ? value : `https://wa.me/${value.replace(/\D/g, '')}`
-    default:         return value.startsWith('http') ? value : `https://${value}`
-  }
 }
 
 export default async function ContactPage() {
@@ -54,7 +50,8 @@ export default async function ContactPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
               {contacts.map(c => {
                 const icon = c.icon || PLATFORM_ICONS[c.platform.toLowerCase()] || '📱'
-                const href = getHref(c.platform.toLowerCase(), c.value)
+                const href = safeContactHref(c.platform, c.value)
+                if (!href) return null
                 const isExternal = !href.startsWith('mailto:') && !href.startsWith('tel:')
 
                 return (

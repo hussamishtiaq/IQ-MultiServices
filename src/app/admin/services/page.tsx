@@ -10,10 +10,16 @@ export default function AdminServicesPage() {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading]   = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [error, setError]       = useState<string | null>(null)
 
   const load = async () => {
     const supabase = createClient()
-    const { data } = await supabase.from('services').select('*').order('order', { ascending: true })
+    const { data, error: dbErr } = await supabase
+      .from('services')
+      .select('*')
+      .order('order', { ascending: true })
+      .limit(200)
+    if (dbErr) setError(dbErr.message)
     setServices((data as Service[]) ?? [])
     setLoading(false)
   }
@@ -23,10 +29,15 @@ export default function AdminServicesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this service?')) return
     setDeleting(id)
+    setError(null)
     const supabase = createClient()
-    await supabase.from('services').delete().eq('id', id)
-    setServices(prev => prev.filter(s => s.id !== id))
+    const { error: delErr } = await supabase.from('services').delete().eq('id', id)
     setDeleting(null)
+    if (delErr) {
+      setError(`Failed to delete: ${delErr.message}`)
+      return
+    }
+    setServices(prev => prev.filter(s => s.id !== id))
   }
 
   return (
@@ -41,6 +52,12 @@ export default function AdminServicesPage() {
           <Plus size={16} /> Add Service
         </Link>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
@@ -62,9 +79,12 @@ export default function AdminServicesPage() {
           {services.map(s => (
             <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-start justify-between gap-4 hover:shadow-md transition-shadow">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                {
+                s.icon&&(<div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
                   {s.icon || '⚡'}
-                </div>
+                </div>)
+
+                }
                 <div>
                   <p className="font-semibold text-slate-900">{s.title}</p>
                   {s.description && (

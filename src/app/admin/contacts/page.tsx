@@ -1,14 +1,14 @@
 'use client'
-
-import { useEffect, useState } from 'react'
+import { FaWhatsapp } from "react-icons/fa6";
+import { ReactNode, useEffect, useState } from 'react'
 import { Plus, Edit, Trash2, Loader2, Save, X, Phone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Contact } from '@/types'
 
 const PLATFORMS = ['email', 'whatsapp', 'instagram', 'facebook', 'twitter', 'telegram', 'phone', 'website']
-const PLATFORM_ICONS: Record<string, string> = {
-  email: '✉️', whatsapp: '💬', instagram: '📸', facebook: '📘',
-  twitter: '🐦', telegram: '✈️', phone: '📞', website: '🌐',
+const PLATFORM_ICONS: Record<string,ReactNode>={
+  email: <FaWhatsapp/>, whatsapp: <FaWhatsapp/>, instagram: <FaWhatsapp/>, facebook: <FaWhatsapp/>,
+  twitter: <FaWhatsapp/>, telegram:<FaWhatsapp/>, phone: <FaWhatsapp/>, website: <FaWhatsapp/>,
 }
 
 interface ContactForm { platform: string; label: string; value: string; icon: string; order: string }
@@ -63,7 +63,11 @@ export default function AdminContactsPage() {
 
   const load = async () => {
     const supabase = createClient()
-    const { data } = await supabase.from('contacts').select('*').order('order', { ascending: true })
+    const { data, error: dbErr } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('order', { ascending: true })
+    if (dbErr) setError(dbErr.message)
     setContacts((data as Contact[]) ?? [])
     setLoading(false)
   }
@@ -113,10 +117,15 @@ export default function AdminContactsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this contact?')) return
     setDeleting(id)
+    setError(null)
     const supabase = createClient()
-    await supabase.from('contacts').delete().eq('id', id)
-    setContacts(prev => prev.filter(c => c.id !== id))
+    const { error: delErr } = await supabase.from('contacts').delete().eq('id', id)
     setDeleting(null)
+    if (delErr) {
+      setError(`Failed to delete: ${delErr.message}`)
+      return
+    }
+    setContacts(prev => prev.filter(c => c.id !== id))
   }
 
   return (

@@ -13,6 +13,8 @@ create table if not exists properties (
   title       text not null,
   description text,
   price       numeric(12, 2),
+  currency    text not null default 'AED'
+                check (currency in ('USD', 'AED')),
   location    text,
   type        text not null default 'apartment'
                 check (type in ('apartment','villa','commercial','land','office')),

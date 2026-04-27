@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { ArrowLeft, Loader2, Home, Layers, ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/admin/ImageUpload'
+import { CURRENCY_OPTIONS } from '@/lib/format'
+import type { Currency } from '@/types'
 
 const PROPERTY_TYPES    = ['apartment', 'villa', 'commercial', 'land', 'office'] as const
 const PROPERTY_STATUSES = ['available', 'sold', 'rented'] as const
@@ -36,6 +38,7 @@ export default function NewPropertyPage() {
     title:      '',
     description:'',
     price:      '',
+    currency:   'AED' as Currency,
     location:   '',
     type:       'apartment' as typeof PROPERTY_TYPES[number],
     bedrooms:   '',
@@ -58,6 +61,7 @@ export default function NewPropertyPage() {
       title:       form.title.trim(),
       description: form.description.trim() || null,
       price:       form.price     ? parseFloat(form.price)     : null,
+      currency:    form.currency,
       location:    form.location.trim()    || null,
       type:        form.type,
       bedrooms:    form.bedrooms  ? parseInt(form.bedrooms)    : null,
@@ -102,10 +106,22 @@ export default function NewPropertyPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Price ($)</label>
-              <input type="number" min="0" step="0.01" value={form.price}
-                onChange={e => set('price', e.target.value)}
-                className="input-field" placeholder="0.00" />
+              <label className="label">Price</label>
+              <div className="flex gap-2">
+                <select
+                  value={form.currency}
+                  onChange={e => set('currency', e.target.value)}
+                  className="input-field w-28 flex-shrink-0"
+                  aria-label="Currency"
+                >
+                  {CURRENCY_OPTIONS.map(c => (
+                    <option key={c.value} value={c.value}>{c.value}</option>
+                  ))}
+                </select>
+                <input type="number" min="0" step="0.01" value={form.price}
+                  onChange={e => set('price', e.target.value)}
+                  className="input-field flex-1" placeholder="0.00" />
+              </div>
             </div>
             <div>
               <label className="label">Location</label>

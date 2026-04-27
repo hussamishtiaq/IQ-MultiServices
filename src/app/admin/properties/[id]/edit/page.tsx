@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { ArrowLeft, Loader2, Home, Layers, ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/admin/ImageUpload'
-import type { Property } from '@/types'
+import { CURRENCY_OPTIONS } from '@/lib/format'
+import type { Property, Currency } from '@/types'
 
 const PROPERTY_TYPES    = ['apartment', 'villa', 'commercial', 'land', 'office'] as const
 const PROPERTY_STATUSES = ['available', 'sold', 'rented'] as const
@@ -40,6 +41,7 @@ export default function EditPropertyPage() {
     title:       '',
     description: '',
     price:       '',
+    currency:    'AED' as Currency,
     location:    '',
     type:        'apartment' as typeof PROPERTY_TYPES[number],
     bedrooms:    '',
@@ -53,15 +55,18 @@ export default function EditPropertyPage() {
     setForm(prev => ({ ...prev, [key]: value }))
 
   useEffect(() => {
+    let cancelled = false
     const load = async () => {
       const supabase = createClient()
       const { data } = await supabase.from('properties').select('*').eq('id', id).single()
+      if (cancelled) return
       if (!data) { setError('Property not found.'); setLoading(false); return }
       const p = data as Property
       setForm({
         title:       p.title,
         description: p.description ?? '',
         price:       p.price != null ? String(p.price) : '',
+        currency:    p.currency ?? 'AED',
         location:    p.location ?? '',
         type:        p.type,
         bedrooms:    p.bedrooms  != null ? String(p.bedrooms)  : '',
@@ -74,6 +79,7 @@ export default function EditPropertyPage() {
       setLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [id])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,6 +92,7 @@ export default function EditPropertyPage() {
       title:       form.title.trim(),
       description: form.description.trim() || null,
       price:       form.price     ? parseFloat(form.price)     : null,
+      currency:    form.currency,
       location:    form.location.trim() || null,
       type:        form.type,
       bedrooms:    form.bedrooms  ? parseInt(form.bedrooms)    : null,
@@ -135,9 +142,21 @@ export default function EditPropertyPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Price ($)</label>
-              <input type="number" min="0" step="0.01" value={form.price}
-                onChange={e => set('price', e.target.value)} className="input-field" />
+              <label className="label">Price</label>
+              <div className="flex gap-2">
+                <select
+                  value={form.currency}
+                  onChange={e => set('currency', e.target.value)}
+                  className="input-field w-28 flex-shrink-0"
+                  aria-label="Currency"
+                >
+                  {CURRENCY_OPTIONS.map(c => (
+                    <option key={c.value} value={c.value}>{c.value}</option>
+                  ))}
+                </select>
+                <input type="number" min="0" step="0.01" value={form.price}
+                  onChange={e => set('price', e.target.value)} className="input-field flex-1" />
+              </div>
             </div>
             <div>
               <label className="label">Location</label>

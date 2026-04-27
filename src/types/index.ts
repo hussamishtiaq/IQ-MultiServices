@@ -1,8 +1,11 @@
+export type Currency = 'USD' | 'AED'
+
 export interface Property {
   id: string
   title: string
   description: string | null
   price: number | null
+  currency: Currency
   location: string | null
   type: 'apartment' | 'villa' | 'commercial' | 'land' | 'office'
   bedrooms: number | null

@@ -9,6 +9,24 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+function SignOutButton() {
+  const router = useRouter()
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+    router.refresh()
+  }
+  return (
+    <button onClick={handleSignOut}
+      className="ml-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-50 text-red-500 text-xs font-medium transition-colors"
+      title="Sign out">
+      <LogOut size={14} />
+      <span className="hidden sm:inline">Sign Out</span>
+    </button>
+  )
+}
+
 const groups = [
   {
     label: 'MAIN',
@@ -119,6 +137,7 @@ export default function AdminSidebar() {
           <div className="w-8 h-8 bg-emerald-800 rounded-full flex items-center justify-center ml-1">
             <span className="text-white text-xs font-bold">A</span>
           </div>
+          <SignOutButton />
         </div>
       </header>
 

@@ -23,32 +23,40 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
 
     setUploading(true)
     setError(null)
-    const uploaded: string[] = []
 
-    for (const file of files) {
+    const uploadOne = async (file: File): Promise<string> => {
       const body = new FormData()
       body.append('file', file)
       body.append('upload_preset', UPLOAD_PRESET)
       body.append('folder', 'iq-multiservices/properties')
-
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
         { method: 'POST', body }
       )
-
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        setError(`Upload failed: ${json?.error?.message ?? res.statusText}`)
-        continue
+        throw new Error(json?.error?.message ?? res.statusText)
       }
-
       const json = await res.json()
-      uploaded.push(json.secure_url as string)
+      return json.secure_url as string
     }
 
+    const results = await Promise.allSettled(files.map(uploadOne))
+    const uploaded = results.flatMap(r => (r.status === 'fulfilled' ? [r.value] : []))
+    const failures = results
+      .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      .map(r => r.reason?.message ?? 'unknown error')
+
     setUploading(false)
-    onChange([...value, ...uploaded])
-    if (inputRef.current) inputRef.current.value = ''
+
+    if (uploaded.length) onChange([...value, ...uploaded])
+
+    if (failures.length) {
+      setError(`${failures.length} of ${files.length} upload(s) failed: ${failures[0]}`)
+      // Keep the input value so the user can see which selection failed
+    } else if (inputRef.current) {
+      inputRef.current.value = ''
+    }
   }
 
   const remove = (url: string) => onChange(value.filter(u => u !== url))
