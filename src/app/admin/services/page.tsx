@@ -79,12 +79,6 @@ export default function AdminServicesPage() {
           {services.map(s => (
             <div key={s.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-start justify-between gap-4 hover:shadow-md transition-shadow">
               <div className="flex items-start gap-4">
-                {
-                s.icon&&(<div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                  {s.icon || '⚡'}
-                </div>)
-
-                }
                 <div>
                   <p className="font-semibold text-slate-900">{s.title}</p>
                   {s.description && (

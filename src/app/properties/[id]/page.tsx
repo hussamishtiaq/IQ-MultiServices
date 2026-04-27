@@ -8,6 +8,7 @@ import PropertyGallery from '@/components/PropertyGallery'
 import { createClient } from '@/lib/supabase/server'
 import { safeContactHref } from '@/lib/safe-url'
 import { formatPrice } from '@/lib/format'
+import { PlatformIcon } from '@/lib/platform-icons'
 import type { Property, Contact } from '@/types'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -203,7 +204,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                           rel={external ? 'noopener noreferrer' : undefined}
                           className="flex items-center gap-2.5 text-sm text-slate-600 hover:text-emerald-700 transition-colors"
                         >
-                          <span className="text-lg">{c.icon ?? '📞'}</span>
+                          <span className="text-emerald-700"><PlatformIcon platform={c.platform} size={18} /></span>
                           <div>
                             <span className="font-semibold text-slate-800">{c.label}</span>
                             <span className="text-slate-500 ml-1.5 truncate">{c.value}</span>

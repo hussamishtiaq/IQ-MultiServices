@@ -1,18 +1,21 @@
 'use client'
-import { FaWhatsapp } from "react-icons/fa6";
-import { ReactNode, useEffect, useState } from 'react'
+
+import { useEffect, useState } from 'react'
 import { Plus, Edit, Trash2, Loader2, Save, X, Phone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { PLATFORMS, PlatformIcon, platformLabel } from '@/lib/platform-icons'
 import type { Contact } from '@/types'
 
-const PLATFORMS = ['email', 'whatsapp', 'instagram', 'facebook', 'twitter', 'telegram', 'phone', 'website']
-const PLATFORM_ICONS: Record<string,ReactNode>={
-  email: <FaWhatsapp/>, whatsapp: <FaWhatsapp/>, instagram: <FaWhatsapp/>, facebook: <FaWhatsapp/>,
-  twitter: <FaWhatsapp/>, telegram:<FaWhatsapp/>, phone: <FaWhatsapp/>, website: <FaWhatsapp/>,
+interface ContactForm {
+  platform: string
+  label: string
+  value: string
+  order: string
 }
 
-interface ContactForm { platform: string; label: string; value: string; icon: string; order: string }
-const emptyForm = (): ContactForm => ({ platform: 'email', label: '', value: '', icon: '', order: '0' })
+const emptyForm = (): ContactForm => ({
+  platform: 'email', label: '', value: '', order: '0',
+})
 
 function FormFields({ f, set: s }: { f: ContactForm; set: (k: string, v: string) => void }) {
   return (
@@ -20,7 +23,9 @@ function FormFields({ f, set: s }: { f: ContactForm; set: (k: string, v: string)
       <div>
         <label className="label">Platform</label>
         <select value={f.platform} onChange={e => s('platform', e.target.value)} className="input-field">
-          {PLATFORMS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+          {PLATFORMS.map(p => (
+            <option key={p} value={p}>{platformLabel(p)}</option>
+          ))}
         </select>
       </div>
       <div>
@@ -31,19 +36,12 @@ function FormFields({ f, set: s }: { f: ContactForm; set: (k: string, v: string)
       <div>
         <label className="label">Value / URL</label>
         <input value={f.value} onChange={e => s('value', e.target.value)}
-          className="input-field" placeholder="e.g. +964 XXX XXX" required />
+          className="input-field" placeholder="e.g. +971 50 XXX XXXX" required />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="label">Icon (emoji)</label>
-          <input value={f.icon} onChange={e => s('icon', e.target.value)}
-            className="input-field" placeholder="auto" maxLength={4} />
-        </div>
-        <div>
-          <label className="label">Order</label>
-          <input type="number" min="0" value={f.order}
-            onChange={e => s('order', e.target.value)} className="input-field" />
-        </div>
+      <div>
+        <label className="label">Order</label>
+        <input type="number" min="0" value={f.order}
+          onChange={e => s('order', e.target.value)} className="input-field" />
       </div>
     </div>
   )
@@ -58,7 +56,7 @@ export default function AdminContactsPage() {
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState<string | null>(null)
 
-  const [form, setForm]       = useState<ContactForm>(emptyForm())
+  const [form, setForm]         = useState<ContactForm>(emptyForm())
   const [editForm, setEditForm] = useState<ContactForm>(emptyForm())
 
   const load = async () => {
@@ -86,7 +84,6 @@ export default function AdminContactsPage() {
       platform: form.platform,
       label:    form.label.trim(),
       value:    form.value.trim(),
-      icon:     form.icon.trim() || PLATFORM_ICONS[form.platform] || null,
       order:    parseInt(form.order) || 0,
     }).select().single()
     if (dbErr) { setError(dbErr.message); setSaving(false); return }
@@ -96,35 +93,31 @@ export default function AdminContactsPage() {
 
   const startEdit = (c: Contact) => {
     setEditing(c.id)
-    setEditForm({ platform: c.platform, label: c.label, value: c.value, icon: c.icon ?? '', order: String(c.order) })
+    setEditForm({ platform: c.platform, label: c.label, value: c.value, order: String(c.order) })
   }
 
   const handleEdit = async (id: string) => {
     if (!editForm.label.trim() || !editForm.value.trim()) return
-    setSaving(true)
+    setSaving(true); setError(null)
     const supabase = createClient()
     const { data, error: dbErr } = await supabase.from('contacts').update({
       platform: editForm.platform,
       label:    editForm.label.trim(),
       value:    editForm.value.trim(),
-      icon:     editForm.icon.trim() || PLATFORM_ICONS[editForm.platform] || null,
       order:    parseInt(editForm.order) || 0,
     }).eq('id', id).select().single()
-    if (!dbErr && data) setContacts(prev => prev.map(c => c.id === id ? data as Contact : c))
+    if (dbErr) { setError(dbErr.message); setSaving(false); return }
+    if (data) setContacts(prev => prev.map(c => c.id === id ? data as Contact : c))
     setEditing(null); setSaving(false)
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this contact?')) return
-    setDeleting(id)
-    setError(null)
+    setDeleting(id); setError(null)
     const supabase = createClient()
     const { error: delErr } = await supabase.from('contacts').delete().eq('id', id)
     setDeleting(null)
-    if (delErr) {
-      setError(`Failed to delete: ${delErr.message}`)
-      return
-    }
+    if (delErr) { setError(`Failed to delete: ${delErr.message}`); return }
     setContacts(prev => prev.filter(c => c.id !== id))
   }
 
@@ -141,6 +134,12 @@ export default function AdminContactsPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl mb-4">
+          {error}
+        </div>
+      )}
+
       {/* Add form */}
       {showAdd && (
         <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 mb-6">
@@ -156,7 +155,6 @@ export default function AdminContactsPage() {
           </div>
           <form onSubmit={handleAdd} className="space-y-4">
             <FormFields f={form} set={setF} />
-            {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">{error}</p>}
             <div className="flex gap-3 pt-1">
               <button type="submit" disabled={saving} className="btn-primary text-sm py-2">
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -204,13 +202,13 @@ export default function AdminContactsPage() {
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                      {c.icon || PLATFORM_ICONS[c.platform] || '📱'}
+                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-700 flex-shrink-0">
+                      <PlatformIcon platform={c.platform} size={22} />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900">{c.label}</p>
                       <p className="text-sm text-emerald-700 mt-0.5">{c.value}</p>
-                      <p className="text-xs text-slate-400 capitalize mt-0.5">{c.platform} · order {c.order}</p>
+                      <p className="text-xs text-slate-400 capitalize mt-0.5">{platformLabel(c.platform)} · order {c.order}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">

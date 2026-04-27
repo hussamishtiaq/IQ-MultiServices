@@ -21,7 +21,6 @@ export interface Service {
   id: string
   title: string
   description: string | null
-  icon: string | null
   order: number
   created_at: string
 }
@@ -31,7 +30,6 @@ export interface Contact {
   platform: string
   label: string
   value: string
-  icon: string | null
   order: number
   created_at: string
 }

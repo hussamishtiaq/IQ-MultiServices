@@ -10,7 +10,7 @@ export default function NewServicePage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState<string | null>(null)
-  const [form, setForm]     = useState({ title: '', description: '', icon: '', order: '0' })
+  const [form, setForm]     = useState({ title: '', description: '', order: '0' })
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -23,7 +23,6 @@ export default function NewServicePage() {
     const { error: dbErr } = await supabase.from('services').insert({
       title:       form.title.trim(),
       description: form.description.trim() || null,
-      icon:        form.icon.trim() || null,
       order:       parseInt(form.order) || 0,
     })
 
@@ -65,18 +64,11 @@ export default function NewServicePage() {
             <textarea value={form.description} onChange={e => set('description', e.target.value)}
               rows={4} className="input-field resize-none" placeholder="Describe this service…" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Icon (emoji)</label>
-              <input value={form.icon} onChange={e => set('icon', e.target.value)}
-                className="input-field" placeholder="🏠" maxLength={4} />
-            </div>
-            <div>
-              <label className="label">Display Order</label>
-              <input type="number" min="0" value={form.order}
-                onChange={e => set('order', e.target.value)} className="input-field" />
-              <p className="text-xs text-slate-400 mt-1.5">Lower numbers appear first</p>
-            </div>
+          <div>
+            <label className="label">Display Order</label>
+            <input type="number" min="0" value={form.order}
+              onChange={e => set('order', e.target.value)} className="input-field max-w-[200px]" />
+            <p className="text-xs text-slate-400 mt-1.5">Lower numbers appear first</p>
           </div>
 
           {error && (

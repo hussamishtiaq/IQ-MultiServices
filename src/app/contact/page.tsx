@@ -3,6 +3,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { createClient } from '@/lib/supabase/server'
 import { safeContactHref } from '@/lib/safe-url'
+import { PlatformIcon } from '@/lib/platform-icons'
 import { Phone, ChevronRight } from 'lucide-react'
 import type { Contact } from '@/types'
 
@@ -10,17 +11,6 @@ export const metadata = {
   title: 'Contact Us',
   description: 'Get in touch with IQ MultiServices. Reach us via email, phone, WhatsApp, and social media.',
   alternates: { canonical: '/contact' },
-}
-
-const PLATFORM_ICONS: Record<string, string> = {
-  email:     '✉️',
-  whatsapp:  '💬',
-  instagram: '📸',
-  facebook:  '📘',
-  twitter:   '🐦',
-  telegram:  '✈️',
-  phone:     '📞',
-  website:   '🌐',
 }
 
 export default async function ContactPage() {
@@ -49,7 +39,6 @@ export default async function ContactPage() {
           {contacts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
               {contacts.map(c => {
-                const icon = c.icon || PLATFORM_ICONS[c.platform.toLowerCase()] || '📱'
                 const href = safeContactHref(c.platform, c.value)
                 if (!href) return null
                 const isExternal = !href.startsWith('mailto:') && !href.startsWith('tel:')
@@ -62,8 +51,8 @@ export default async function ContactPage() {
                     rel={isExternal ? 'noopener noreferrer' : undefined}
                     className="card p-6 hover:shadow-md transition-shadow duration-200 flex items-center gap-4 group"
                   >
-                    <div className="text-4xl w-14 h-14 flex items-center justify-center bg-emerald-50 rounded-xl group-hover:bg-emerald-100 transition-colors flex-shrink-0">
-                      {icon}
+                    <div className="w-14 h-14 flex items-center justify-center bg-emerald-50 rounded-xl text-emerald-700 group-hover:bg-emerald-100 transition-colors flex-shrink-0">
+                      <PlatformIcon platform={c.platform} size={26} />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 capitalize">{c.label}</p>

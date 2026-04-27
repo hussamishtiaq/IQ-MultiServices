@@ -32,7 +32,6 @@ create table if not exists services (
   id          uuid default uuid_generate_v4() primary key,
   title       text not null,
   description text,
-  icon        text,
   "order"     integer not null default 0,
   created_at  timestamptz not null default now()
 );
@@ -42,7 +41,6 @@ create table if not exists contacts (
   platform    text not null,
   label       text not null,
   value       text not null,
-  icon        text,
   "order"     integer not null default 0,
   created_at  timestamptz not null default now()
 );
