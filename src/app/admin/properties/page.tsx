@@ -56,9 +56,14 @@ export default function AdminPropertiesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Properties</h1>
           <p className="text-slate-500 text-sm mt-1">{properties.length} listing{properties.length !== 1 ? 's' : ''}</p>
         </div>
-        <Link href="/admin/properties/new" className="btn-primary text-sm py-2">
-          <Plus size={16} /> Add Property
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/properties/bulk" className="btn-secondary text-sm py-2">
+            Bulk Editor
+          </Link>
+          <Link href="/admin/properties/new" className="btn-primary text-sm py-2">
+            <Plus size={16} /> Add Property
+          </Link>
+        </div>
       </div>
 
       {error && (

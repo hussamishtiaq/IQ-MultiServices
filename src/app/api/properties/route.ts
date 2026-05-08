@@ -7,22 +7,36 @@ const PAGE_SIZE = 9
 const MAX_Q_LENGTH = 80
 
 function sanitizeIlike(q: string): string {
-  // Strip wildcards and escape characters that could force full table scans.
   return q.slice(0, MAX_Q_LENGTH).replace(/[%_\\]/g, '\\$&').trim()
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
-  const page   = Math.max(1, Math.min(1000, parseInt(searchParams.get('page') ?? '1') || 1))
-  const type   = searchParams.get('type')   ?? ''
-  const status = searchParams.get('status') ?? ''
-  const q      = sanitizeIlike(searchParams.get('q') ?? '')
+  const page    = Math.max(1, Math.min(1000, parseInt(searchParams.get('page') ?? '1') || 1))
+  const type    = searchParams.get('type')    ?? ''
+  const status  = searchParams.get('status')  ?? ''
+  const listing = searchParams.get('listing') ?? ''         // sale | rent
+  const completion = searchParams.get('completion') ?? ''   // ready | off_plan | resale
+  const areaSlug = searchParams.get('area')   ?? ''
+  const beds    = searchParams.get('beds')    ?? ''
+  const q       = sanitizeIlike(searchParams.get('q') ?? '')
 
   const from = (page - 1) * PAGE_SIZE
   const to   = from + PAGE_SIZE - 1
 
   const supabase = createClient()
-  // Only run an exact COUNT on page 1; subsequent pages reuse the cached count via React Query.
+
+  // Resolve area slug → id once (cheap, indexed)
+  let areaId: string | null = null
+  if (areaSlug) {
+    const { data: a } = await supabase.from('areas').select('id').eq('slug', areaSlug).single()
+    areaId = a?.id ?? null
+    if (!areaId) {
+      // Unknown slug → empty result
+      return NextResponse.json({ data: [], total: 0, page, hasMore: false })
+    }
+  }
+
   const countMode = page === 1 ? 'exact' : 'estimated'
   let query = supabase
     .from('properties')
@@ -30,9 +44,13 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  if (type   && type   !== 'all') query = query.eq('type',   type)
-  if (status && status !== 'all') query = query.eq('status', status)
-  if (q)                          query = query.ilike('title', `%${q}%`)
+  if (type       && type    !== 'all') query = query.eq('type',              type)
+  if (status     && status  !== 'all') query = query.eq('status',            status)
+  if (listing    && listing !== 'all') query = query.eq('listing_type',      listing)
+  if (completion && completion !== 'all') query = query.eq('completion_status', completion)
+  if (areaId)    query = query.eq('area_id', areaId)
+  if (beds !== '' && !Number.isNaN(parseInt(beds))) query = query.eq('bedrooms', parseInt(beds))
+  if (q)         query = query.ilike('title', `%${q}%`)
 
   const { data, count, error } = await query
 
@@ -41,7 +59,6 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = data ?? []
-  // hasMore: if we got a full page, assume there's more; rely on count when available.
   const hasMore =
     count != null
       ? count > page * PAGE_SIZE

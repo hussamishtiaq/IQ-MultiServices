@@ -5,11 +5,15 @@ import { ArrowLeft, MapPin, Bed, Bath, Maximize2, Star, Tag, Phone } from 'lucid
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import PropertyGallery from '@/components/PropertyGallery'
+import LeadForm from '@/components/LeadForm'
+import FloatingCTAs from '@/components/FloatingCTAs'
+import TrackPropertyView from '@/components/TrackPropertyView'
+import Reviews from '@/components/Reviews'
 import { createClient } from '@/lib/supabase/server'
 import { safeContactHref } from '@/lib/safe-url'
 import { formatPrice } from '@/lib/format'
 import { PlatformIcon } from '@/lib/platform-icons'
-import type { Property, Contact } from '@/types'
+import type { Property, Contact, Review } from '@/types'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient()
@@ -51,9 +55,16 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function PropertyDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
-  const [propRes, contactsRes] = await Promise.all([
+  const [propRes, contactsRes, reviewsRes] = await Promise.all([
     supabase.from('properties').select('*').eq('id', params.id).single(),
     supabase.from('contacts').select('*').order('order', { ascending: true }).limit(3),
+    supabase.from('reviews')
+      .select('*')
+      .eq('target_type', 'property')
+      .eq('target_id', params.id)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
   if (!propRes.data) notFound()
@@ -61,6 +72,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
 
   const property = propRes.data as Property
   const contacts = (contactsRes.data as Contact[]) ?? []
+  const reviews  = (reviewsRes.data as Review[]) ?? []
 
   const statusClass: Record<Property['status'], string> = {
     available: 'badge-available',
@@ -100,6 +112,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <TrackPropertyView propertyId={property.id} areaId={property.area_id} />
       <Navbar />
       <main className="min-h-screen bg-slate-50 pt-16">
         <div className="container-main py-8">
@@ -121,6 +134,9 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                   {property.description ?? 'No description provided.'}
                 </p>
               </div>
+
+              {/* Reviews */}
+              <Reviews targetType="property" targetId={property.id} initial={reviews} />
             </div>
 
             {/* Right — Details */}
@@ -149,6 +165,22 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                     <Tag size={10} /> {typeLabels[property.type] ?? property.type}
                   </span>
+                  {property.listing_type && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                      For {property.listing_type === 'sale' ? 'Sale' : 'Rent'}
+                      {property.listing_type === 'rent' && property.rent_period && ` · ${property.rent_period}`}
+                    </span>
+                  )}
+                  {property.completion_status && property.completion_status !== 'ready' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                      {property.completion_status === 'off_plan' ? 'Off-plan' : 'Resale'}
+                    </span>
+                  )}
+                  {property.furnishing && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 capitalize">
+                      {property.furnishing.replace('_', ' ')}
+                    </span>
+                  )}
                 </div>
 
                 {property.location && (
@@ -185,11 +217,26 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                 )}
               </div>
 
-              {/* Contact card */}
+              {/* Lead capture form */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                  <Phone size={16} className="text-emerald-700" /> Get a callback
+                </h3>
+                <p className="text-xs text-slate-500 mb-4">An agent will reach out within minutes.</p>
+                <LeadForm
+                  propertyId={property.id}
+                  areaId={property.area_id ?? undefined}
+                  source="property_detail"
+                  defaultMessage={`I'm interested in "${property.title}".`}
+                  compact
+                />
+              </div>
+
+              {/* Direct contact channels */}
               {contacts.length > 0 && (
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                   <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                    <Phone size={16} className="text-emerald-700" /> Interested? Contact Us
+                    <Phone size={16} className="text-emerald-700" /> Or contact us directly
                   </h3>
                   <div className="space-y-2.5">
                     {contacts.map(c => {
@@ -222,6 +269,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
           </div>
         </div>
       </main>
+      <FloatingCTAs contacts={contacts} />
       <Footer />
     </>
   )

@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Building2, LayoutDashboard, Home, Briefcase, Phone,
-  Settings, LogOut, Menu, X, Bell, ChevronRight,
+  Building2, LayoutDashboard, Home, Briefcase, Phone, MapPin, MessageSquare,
+  BarChart3, Boxes, Layers, Star, Settings, LogOut, Menu, X, Bell, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -36,8 +36,19 @@ const groups = [
     label: 'CONTENT',
     links: [
       { href: '/admin/properties', label: 'Properties', icon: Home,      exact: false },
+      { href: '/admin/areas',      label: 'Areas',      icon: MapPin,    exact: false },
+      { href: '/admin/projects',   label: 'Off-plan',   icon: Layers,    exact: false },
+      { href: '/admin/developers', label: 'Developers', icon: Boxes,     exact: false },
       { href: '/admin/services',   label: 'Services',   icon: Briefcase, exact: false },
       { href: '/admin/contacts',   label: 'Contacts',   icon: Phone,     exact: false },
+    ],
+  },
+  {
+    label: 'CRM',
+    links: [
+      { href: '/admin/leads',      label: 'Leads',      icon: MessageSquare, exact: false },
+      { href: '/admin/reviews',    label: 'Reviews',    icon: Star,          exact: false },
+      { href: '/admin/analytics',  label: 'Analytics',  icon: BarChart3,     exact: false },
     ],
   },
   {

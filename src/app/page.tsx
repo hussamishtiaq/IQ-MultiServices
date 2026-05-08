@@ -1,22 +1,25 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, ArrowDown, Building2, Briefcase } from 'lucide-react'
+import { ArrowRight, ArrowDown, Building2, Briefcase, MapPin, Tag, Layers } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import PropertyCard from '@/components/PropertyCard'
 import ServiceCard from '@/components/ServiceCard'
 import { createClient } from '@/lib/supabase/server'
-import type { Property, Service, SiteSettings } from '@/types'
+import { formatPrice } from '@/lib/format'
+import type { Property, Service, SiteSettings, Area } from '@/types'
 
 async function getHomeData() {
   const supabase = createClient()
-  const [propRes, svcRes, settingsRes, countsRes] = await Promise.all([
+  const [propRes, svcRes, settingsRes, areasRes, countsRes] = await Promise.all([
     supabase.from('properties').select('*').eq('featured', true).order('created_at', { ascending: false }).limit(3),
     supabase.from('services').select('*').order('order', { ascending: true }).limit(6),
     supabase.from('site_settings').select('key, value'),
+    supabase.from('areas').select('*').order('display_order', { ascending: true }).limit(6),
     Promise.all([
       supabase.from('properties').select('id', { count: 'exact', head: true }),
       supabase.from('services').select('id',   { count: 'exact', head: true }),
+      supabase.from('areas').select('id',      { count: 'exact', head: true }),
     ]),
   ])
 
@@ -26,14 +29,16 @@ async function getHomeData() {
   return {
     properties: (propRes.data as Property[]) ?? [],
     services:   (svcRes.data  as Service[])  ?? [],
+    areas:      (areasRes.data as Area[])    ?? [],
     settings,
     propCount: countsRes[0].count ?? 0,
     svcCount:  countsRes[1].count ?? 0,
+    areaCount: countsRes[2].count ?? 0,
   }
 }
 
 export default async function HomePage() {
-  const { properties, services, settings, propCount, svcCount } = await getHomeData()
+  const { properties, services, areas, settings, propCount, svcCount, areaCount } = await getHomeData()
 
   const siteName  = settings['site_name']  ?? 'IQ MultiServices'
   const tagline   = settings['tagline']    ?? 'Your Trusted Partner in Real Estate & Business Services'
@@ -78,13 +83,21 @@ export default async function HomePage() {
               {tagline}
             </p>
 
-            <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <Link href="/properties" className="btn-accent px-8 py-4 text-base shadow-lg">
-                Browse Properties <ArrowRight size={18} />
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
+              <Link href="/buy" className="btn-accent px-7 py-3.5 text-base shadow-lg">
+                <Tag size={16} /> Buy
               </Link>
-              <Link href="/services"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 text-white font-semibold rounded-xl border border-white/30 hover:bg-white/20 transition-all duration-200 text-base backdrop-blur-sm">
-                Our Services
+              <Link href="/rent"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/15 text-white font-semibold rounded-xl border border-white/30 hover:bg-white/25 transition-all text-base backdrop-blur-sm">
+                <Tag size={16} /> Rent
+              </Link>
+              <Link href="/off-plan"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 text-white font-semibold rounded-xl border border-white/30 hover:bg-white/20 transition-all text-base backdrop-blur-sm">
+                <Layers size={16} /> Off-plan
+              </Link>
+              <Link href="/areas"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 text-white font-semibold rounded-xl border border-white/30 hover:bg-white/20 transition-all text-base backdrop-blur-sm">
+                <MapPin size={16} /> Areas
               </Link>
             </div>
           </div>
@@ -99,10 +112,14 @@ export default async function HomePage() {
       {/* ── Stats bar ── */}
       <section className="bg-white border-b border-slate-100 shadow-sm">
         <div className="container-main py-8">
-          <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto divide-x divide-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto sm:divide-x divide-slate-100">
             <div className="text-center px-4">
               <div className="text-3xl sm:text-4xl font-extrabold text-emerald-800">{propCount}+</div>
               <div className="text-xs sm:text-sm font-medium text-slate-500 mt-1">Properties</div>
+            </div>
+            <div className="text-center px-4">
+              <div className="text-3xl sm:text-4xl font-extrabold text-emerald-800">{areaCount}+</div>
+              <div className="text-xs sm:text-sm font-medium text-slate-500 mt-1">Areas</div>
             </div>
             <div className="text-center px-4">
               <div className="text-3xl sm:text-4xl font-extrabold text-emerald-800">{svcCount}+</div>
@@ -115,6 +132,50 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Featured Areas ── */}
+      {areas.length > 0 && (
+        <section className="bg-white py-20 border-b border-slate-100">
+          <div className="container-main">
+            <div className="text-center mb-12">
+              <span className="section-label mb-3">Communities</span>
+              <h2 className="section-title">Popular Dubai Areas</h2>
+              <p className="section-subtitle mx-auto text-center">
+                Explore prime communities across the city
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {areas.map(a => (
+                <Link
+                  key={a.id}
+                  href={`/areas/${a.slug}`}
+                  className="group relative aspect-square overflow-hidden rounded-2xl bg-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                >
+                  {a.hero_image ? (
+                    <Image src={a.hero_image} alt={a.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw" />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-700 to-emerald-900" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3 text-white">
+                    <p className="text-sm font-bold leading-tight line-clamp-2">{a.name}</p>
+                    {a.avg_price_sale_aed && (
+                      <p className="text-[10px] text-emerald-300 mt-0.5">From {formatPrice(a.avg_price_sale_aed, 'AED')}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <div className="text-center mt-10">
+              <Link href="/areas" className="btn-secondary">
+                Explore all areas <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Featured Properties ── */}
       <section className="bg-slate-50 py-20">

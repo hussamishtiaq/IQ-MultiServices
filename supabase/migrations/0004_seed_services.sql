@@ -1,0 +1,38 @@
+-- Seed the 11 services defined by the client. Idempotent — uses upsert by title.
+-- If you already have services and want a clean slate, delete them in admin first.
+
+insert into public.services (title, description, "order") values
+  ('Properties for Sale & Rent',
+   'Curated portfolio of residential and commercial properties for sale and rent across Dubai.',
+   1),
+  ('Clients for Sale & Rent',
+   'Matchmaking buyers, tenants, and investors with the right inventory.',
+   2),
+  ('Operational Partnership',
+   'Operational partnerships with property owners and other brokerages — share workload and revenue.',
+   3),
+  ('Online Admin',
+   'Remote administrative support for brokerages: CRM hygiene, listing maintenance, response handling.',
+   4),
+  ('Online Accountant',
+   'Bookkeeping, VAT filing, commission reconciliation, and financial reporting — fully online.',
+   5),
+  ('Online Manager',
+   'Operations and team management on demand — KPIs, workflows, escalations handled remotely.',
+   6),
+  ('Hiring & Training',
+   'Recruitment, onboarding, RERA training, and continuous skill-building for real estate teams.',
+   7),
+  ('Agents on Commission',
+   'Pool of vetted agents working purely on commission — scale your sales force without fixed costs.',
+   8),
+  ('Marketing',
+   'Listing portals, social media, lead-gen campaigns, paid ads — full-service real estate marketing.',
+   9),
+  ('Buying & Selling Running Brokerages',
+   'Acquire or exit a running real estate brokerage. Valuation, due diligence, transition support.',
+   10),
+  ('Business Establishment (Advisory & Facilities)',
+   'Setting up a real estate or related business in the UAE — advisory, licensing, facilities.',
+   11)
+on conflict do nothing;

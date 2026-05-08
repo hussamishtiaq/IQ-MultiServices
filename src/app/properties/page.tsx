@@ -1,19 +1,20 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Loader2 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { createClient } from '@/lib/supabase/server'
 import PropertiesClient from './PropertiesClient'
-import type { Property } from '@/types'
+import type { Property, Area } from '@/types'
 
 export const metadata: Metadata = {
   title: 'Browse Properties',
-  description: 'Browse our full catalog of properties: apartments, villas, commercial spaces, land, and offices.',
+  description: 'Browse our full catalog of properties: apartments, villas, commercial spaces, land, and offices in Dubai.',
   alternates: { canonical: '/properties' },
   openGraph: {
     title: 'Browse Properties',
-    description: 'Browse our full catalog of properties.',
+    description: 'Browse our full catalog of Dubai properties.',
     url: '/properties',
   },
 }
@@ -22,18 +23,20 @@ const PAGE_SIZE = 9
 
 export default async function PropertiesPage() {
   const supabase = createClient()
-  const { data, count } = await supabase
-    .from('properties')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(0, PAGE_SIZE - 1)
+  const [propsRes, areasRes] = await Promise.all([
+    supabase.from('properties').select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(0, PAGE_SIZE - 1),
+    supabase.from('areas').select('*').order('display_order', { ascending: true }),
+  ])
 
   const initialData = {
-    data: (data as Property[]) ?? [],
-    total: count ?? null,
+    data: (propsRes.data as Property[]) ?? [],
+    total: propsRes.count ?? null,
     page: 1,
-    hasMore: (count ?? 0) > PAGE_SIZE,
+    hasMore: (propsRes.count ?? 0) > PAGE_SIZE,
   }
+  const areas = (areasRes.data as Area[]) ?? []
 
   return (
     <>
@@ -51,7 +54,13 @@ export default async function PropertiesPage() {
           </div>
         </div>
 
-        <PropertiesClient initialData={initialData} />
+        <Suspense fallback={
+          <div className="container-main py-20 flex items-center justify-center">
+            <Loader2 size={32} className="animate-spin text-emerald-600" />
+          </div>
+        }>
+          <PropertiesClient initialData={initialData} areas={areas} />
+        </Suspense>
       </main>
       <Footer />
     </>

@@ -2,12 +2,16 @@
 
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import PropertyCard from '@/components/PropertyCard'
 import { Building2, Search, SlidersHorizontal, Loader2 } from 'lucide-react'
-import type { Property } from '@/types'
+import type { Property, Area } from '@/types'
 
 const TYPES    = ['all', 'apartment', 'villa', 'commercial', 'land', 'office'] as const
 const STATUSES = ['all', 'available', 'sold', 'rented'] as const
+const LISTINGS = ['all', 'sale', 'rent'] as const
+const COMPLETIONS = ['all', 'ready', 'off_plan', 'resale'] as const
+const BEDS = ['any', '0', '1', '2', '3', '4', '5'] as const
 
 interface PageResponse {
   data: Property[]
@@ -16,37 +20,64 @@ interface PageResponse {
   hasMore: boolean
 }
 
-async function fetchProperties({
-  pageParam = 1, type, status, q,
-}: {
-  pageParam?: number; type: string; status: string; q: string
-}): Promise<PageResponse> {
+interface Filters {
+  type: string
+  status: string
+  listing: string
+  completion: string
+  area: string
+  beds: string
+  q: string
+}
+
+async function fetchProperties(args: { pageParam?: number } & Filters): Promise<PageResponse> {
+  const { pageParam = 1, type, status, listing, completion, area, beds, q } = args
   const params = new URLSearchParams({ page: String(pageParam) })
-  if (type   && type   !== 'all') params.set('type',   type)
-  if (status && status !== 'all') params.set('status', status)
-  if (q.trim())                   params.set('q',      q.trim())
+  if (type       && type       !== 'all') params.set('type',       type)
+  if (status     && status     !== 'all') params.set('status',     status)
+  if (listing    && listing    !== 'all') params.set('listing',    listing)
+  if (completion && completion !== 'all') params.set('completion', completion)
+  if (area)                               params.set('area',       area)
+  if (beds       && beds       !== 'any') params.set('beds',       beds)
+  if (q.trim())                           params.set('q',          q.trim())
   const res = await fetch(`/api/properties?${params}`)
   if (!res.ok) throw new Error('Failed to fetch properties')
   return res.json()
 }
 
-export default function PropertiesClient({ initialData }: { initialData: PageResponse }) {
-  const [type,   setType]   = useState('all')
-  const [status, setStatus] = useState('all')
-  const [q,      setQ]      = useState('')
-  const [search, setSearch] = useState('')
+export default function PropertiesClient({
+  initialData,
+  areas,
+}: {
+  initialData: PageResponse
+  areas: Area[]
+}) {
+  const sp = useSearchParams()
+
+  // Initial state from URL
+  const [type,       setType]       = useState(sp.get('type')       ?? 'all')
+  const [status,     setStatus]     = useState(sp.get('status')     ?? 'all')
+  const [listing,    setListing]    = useState(sp.get('listing')    ?? 'all')
+  const [completion, setCompletion] = useState(sp.get('completion') ?? 'all')
+  const [area,       setArea]       = useState(sp.get('area')       ?? '')
+  const [beds,       setBeds]       = useState(sp.get('beds')       ?? 'any')
+  const [q,          setQ]          = useState(sp.get('q')          ?? '')
+  const [search,     setSearch]     = useState(sp.get('q')          ?? '')
 
   const loaderRef = useRef<HTMLDivElement>(null)
+
+  const filters: Filters = { type, status, listing, completion, area, beds, q: search }
 
   const {
     data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError,
   } = useInfiniteQuery({
-    queryKey:           ['properties', type, status, search],
-    queryFn:            ({ pageParam }) => fetchProperties({ pageParam, type, status, q: search }),
-    initialPageParam:   1,
-    getNextPageParam:   (last) => last.hasMore ? last.page + 1 : undefined,
+    queryKey:         ['properties', filters],
+    queryFn:          ({ pageParam }) => fetchProperties({ pageParam, ...filters }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => last.hasMore ? last.page + 1 : undefined,
     initialData:
-      type === 'all' && status === 'all' && search === ''
+      type === 'all' && status === 'all' && listing === 'all' && completion === 'all'
+        && !area && beds === 'any' && !search
         ? { pages: [initialData], pageParams: [1] }
         : undefined,
   })
@@ -73,7 +104,14 @@ export default function PropertiesClient({ initialData }: { initialData: PageRes
     setSearch(q)
   }
 
-  const filtersDirty = type !== 'all' || status !== 'all' || !!search
+  const filtersDirty =
+    type !== 'all' || status !== 'all' || listing !== 'all' || completion !== 'all'
+    || !!area || beds !== 'any' || !!search
+
+  const clearAll = () => {
+    setType('all'); setStatus('all'); setListing('all'); setCompletion('all')
+    setArea(''); setBeds('any'); setQ(''); setSearch('')
+  }
 
   return (
     <div className="container-main py-8">
@@ -97,34 +135,70 @@ export default function PropertiesClient({ initialData }: { initialData: PageRes
             <button type="submit" className="btn-primary py-2.5 px-4 text-sm">Search</button>
           </form>
 
-          <div className="min-w-[140px]">
-            <label className="label">Type</label>
-            <select value={type} onChange={e => setType(e.target.value)} className="input-field">
-              {TYPES.map(t => (
-                <option key={t} value={t}>
-                  {t === 'all' ? 'All Types' : t.charAt(0).toUpperCase() + t.slice(1)}
+          <div className="min-w-[120px]">
+            <label className="label">Listing</label>
+            <select value={listing} onChange={e => setListing(e.target.value)} className="input-field">
+              {LISTINGS.map(l => (
+                <option key={l} value={l}>
+                  {l === 'all' ? 'Sale & Rent' : l === 'sale' ? 'For Sale' : 'For Rent'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[130px]">
+            <label className="label">Status</label>
+            <select value={completion} onChange={e => setCompletion(e.target.value)} className="input-field">
+              {COMPLETIONS.map(c => (
+                <option key={c} value={c}>
+                  {c === 'all' ? 'Ready & Off-plan' : c === 'off_plan' ? 'Off-plan' : c.charAt(0).toUpperCase() + c.slice(1)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="min-w-[140px]">
-            <label className="label">Status</label>
+            <label className="label">Area</label>
+            <select value={area} onChange={e => setArea(e.target.value)} className="input-field">
+              <option value="">All Areas</option>
+              {areas.map(a => (
+                <option key={a.id} value={a.slug}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[100px]">
+            <label className="label">Beds</label>
+            <select value={beds} onChange={e => setBeds(e.target.value)} className="input-field">
+              {BEDS.map(b => (
+                <option key={b} value={b}>
+                  {b === 'any' ? 'Any' : b === '0' ? 'Studio' : `${b}+`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[130px]">
+            <label className="label">Type</label>
+            <select value={type} onChange={e => setType(e.target.value)} className="input-field">
+              {TYPES.map(t => (
+                <option key={t} value={t}>{t === 'all' ? 'All Types' : t.charAt(0).toUpperCase() + t.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[120px]">
+            <label className="label">Availability</label>
             <select value={status} onChange={e => setStatus(e.target.value)} className="input-field">
               {STATUSES.map(s => (
-                <option key={s} value={s}>
-                  {s === 'all' ? 'All Status' : s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
+                <option key={s} value={s}>{s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
             </select>
           </div>
 
           {filtersDirty && (
-            <button
-              type="button"
-              onClick={() => { setType('all'); setStatus('all'); setQ(''); setSearch('') }}
-              className="text-sm text-slate-400 hover:text-red-500 transition-colors pb-0.5"
-            >
+            <button type="button" onClick={clearAll}
+              className="text-sm text-slate-400 hover:text-red-500 transition-colors pb-0.5">
               Clear all
             </button>
           )}

@@ -7,7 +7,10 @@ import { Building2, Menu, X, Phone, LayoutDashboard } from 'lucide-react'
 
 const navLinks = [
   { href: '/',           label: 'Home' },
-  { href: '/properties', label: 'Properties' },
+  { href: '/buy',        label: 'Buy' },
+  { href: '/rent',       label: 'Rent' },
+  { href: '/off-plan',   label: 'Off-plan' },
+  { href: '/areas',      label: 'Areas' },
   { href: '/services',   label: 'Services' },
 ]
 

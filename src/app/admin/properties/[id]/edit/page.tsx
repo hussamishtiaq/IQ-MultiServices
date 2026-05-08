@@ -3,14 +3,17 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Home, Layers, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Loader2, Home, Layers, ImageIcon, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/admin/ImageUpload'
 import { CURRENCY_OPTIONS } from '@/lib/format'
-import type { Property, Currency } from '@/types'
+import type { Property, Currency, Area, ListingType, CompletionStatus, Furnishing } from '@/types'
 
 const PROPERTY_TYPES    = ['apartment', 'villa', 'commercial', 'land', 'office'] as const
 const PROPERTY_STATUSES = ['available', 'sold', 'rented'] as const
+const LISTING_TYPES: ListingType[]       = ['sale', 'rent']
+const COMPLETION_STATUSES: CompletionStatus[] = ['ready', 'off_plan', 'resale']
+const FURNISHINGS: Furnishing[]          = ['furnished', 'semi_furnished', 'unfurnished']
 
 function SectionCard({ icon: Icon, title, children }: {
   icon: React.ElementType; title: string; children: React.ReactNode
@@ -37,19 +40,30 @@ export default function EditPropertyPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
+  const [areas, setAreas] = useState<Area[]>([])
   const [form, setForm] = useState({
-    title:       '',
-    description: '',
-    price:       '',
-    currency:    'AED' as Currency,
-    location:    '',
-    type:        'apartment' as typeof PROPERTY_TYPES[number],
-    bedrooms:    '',
-    bathrooms:   '',
-    area:        '',
-    status:      'available' as typeof PROPERTY_STATUSES[number],
-    featured:    false,
+    title:             '',
+    description:       '',
+    price:             '',
+    currency:          'AED' as Currency,
+    location:          '',
+    area_id:           '',
+    listing_type:      'sale' as ListingType,
+    completion_status: 'ready' as CompletionStatus,
+    furnishing:        '' as '' | Furnishing,
+    type:              'apartment' as typeof PROPERTY_TYPES[number],
+    bedrooms:          '',
+    bathrooms:         '',
+    area:              '',
+    status:            'available' as typeof PROPERTY_STATUSES[number],
+    featured:          false,
   })
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('areas').select('*').order('display_order', { ascending: true })
+      .then(({ data }) => setAreas((data as Area[]) ?? []))
+  }, [])
 
   const set = (key: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
@@ -63,17 +77,21 @@ export default function EditPropertyPage() {
       if (!data) { setError('Property not found.'); setLoading(false); return }
       const p = data as Property
       setForm({
-        title:       p.title,
-        description: p.description ?? '',
-        price:       p.price != null ? String(p.price) : '',
-        currency:    p.currency ?? 'AED',
-        location:    p.location ?? '',
-        type:        p.type,
-        bedrooms:    p.bedrooms  != null ? String(p.bedrooms)  : '',
-        bathrooms:   p.bathrooms != null ? String(p.bathrooms) : '',
-        area:        p.area      != null ? String(p.area)      : '',
-        status:      p.status,
-        featured:    p.featured,
+        title:             p.title,
+        description:       p.description ?? '',
+        price:             p.price != null ? String(p.price) : '',
+        currency:          p.currency ?? 'AED',
+        location:          p.location ?? '',
+        area_id:           p.area_id ?? '',
+        listing_type:      p.listing_type ?? 'sale',
+        completion_status: p.completion_status ?? 'ready',
+        furnishing:        p.furnishing ?? '',
+        type:              p.type,
+        bedrooms:          p.bedrooms  != null ? String(p.bedrooms)  : '',
+        bathrooms:         p.bathrooms != null ? String(p.bathrooms) : '',
+        area:              p.area      != null ? String(p.area)      : '',
+        status:            p.status,
+        featured:          p.featured,
       })
       setImages(p.images ?? [])
       setLoading(false)
@@ -89,12 +107,16 @@ export default function EditPropertyPage() {
 
     const supabase = createClient()
     const { error: dbErr } = await supabase.from('properties').update({
-      title:       form.title.trim(),
-      description: form.description.trim() || null,
-      price:       form.price     ? parseFloat(form.price)     : null,
-      currency:    form.currency,
-      location:    form.location.trim() || null,
-      type:        form.type,
+      title:             form.title.trim(),
+      description:       form.description.trim() || null,
+      price:             form.price     ? parseFloat(form.price)     : null,
+      currency:          form.currency,
+      location:          form.location.trim() || null,
+      area_id:           form.area_id || null,
+      listing_type:      form.listing_type,
+      completion_status: form.completion_status,
+      furnishing:        form.furnishing || null,
+      type:              form.type,
       bedrooms:    form.bedrooms  ? parseInt(form.bedrooms)    : null,
       bathrooms:   form.bathrooms ? parseInt(form.bathrooms)   : null,
       area:        form.area      ? parseFloat(form.area)      : null,
@@ -162,6 +184,47 @@ export default function EditPropertyPage() {
               <label className="label">Location</label>
               <input value={form.location} onChange={e => set('location', e.target.value)} className="input-field" />
             </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard icon={MapPin} title="Listing & Area">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="label">Listing</label>
+              <select value={form.listing_type} onChange={e => set('listing_type', e.target.value)} className="input-field">
+                {LISTING_TYPES.map(l => (
+                  <option key={l} value={l}>{l === 'sale' ? 'For Sale' : 'For Rent'}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Completion</label>
+              <select value={form.completion_status} onChange={e => set('completion_status', e.target.value)} className="input-field">
+                {COMPLETION_STATUSES.map(c => (
+                  <option key={c} value={c}>
+                    {c === 'off_plan' ? 'Off-plan' : c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Furnishing</label>
+              <select value={form.furnishing} onChange={e => set('furnishing', e.target.value)} className="input-field">
+                <option value="">—</option>
+                {FURNISHINGS.map(f => (
+                  <option key={f} value={f}>{f.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Area / Community</label>
+            <select value={form.area_id} onChange={e => set('area_id', e.target.value)} className="input-field">
+              <option value="">— Select an area —</option>
+              {areas.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
           </div>
         </SectionCard>
 
