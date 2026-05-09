@@ -1,4 +1,5 @@
 export type Currency       = 'USD' | 'AED'
+export type StudioType     = 'standard' | 'alcove' | 'convertible' | 'loft' | 'micro'
 export type ListingType    = 'sale' | 'rent'
 export type CompletionStatus = 'ready' | 'off_plan' | 'resale'
 export type Furnishing     = 'furnished' | 'semi_furnished' | 'unfurnished'
@@ -20,6 +21,7 @@ export interface Property {
   listing_type: ListingType
   completion_status: CompletionStatus
   furnishing: Furnishing | null
+  studio_type: StudioType | null
   rent_period: RentPeriod | null
   payment_plan: string | null
   handover_date: string | null

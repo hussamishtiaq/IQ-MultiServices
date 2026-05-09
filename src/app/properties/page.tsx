@@ -1,3 +1,5 @@
+export const revalidate = 60   // ISR: refresh cached shell every 60 seconds
+
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -23,11 +25,16 @@ const PAGE_SIZE = 9
 
 export default async function PropertiesPage() {
   const supabase = createClient()
+
   const [propsRes, areasRes] = await Promise.all([
     supabase.from('properties').select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(0, PAGE_SIZE - 1),
-    supabase.from('areas').select('*').order('display_order', { ascending: true }),
+      .range(0, PAGE_SIZE - 1)
+      .then(r => r)
+      .catch(() => ({ data: [] as Property[], count: 0, error: null })),
+    supabase.from('areas').select('*').order('display_order', { ascending: true })
+      .then(r => r)
+      .catch(() => ({ data: [] as Area[], error: null })),
   ])
 
   const initialData = {

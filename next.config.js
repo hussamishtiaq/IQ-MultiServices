@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Cloudinary already optimizes; Next still runs through /_next/image but
-    // if sharp / optimization fails we don't break the page.
     remotePatterns: [
       {
         protocol: 'https',
@@ -15,10 +13,13 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
-    // Allow next/image to serve modern formats automatically
     formats: ['image/avif', 'image/webp'],
-    // Reasonable cache TTL (60s minimum) for optimized images
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 3600,
+  },
+  // Fix: ChunkLoadError in dev (784+ modules can exceed the default 120s timeout)
+  webpack: (config) => {
+    config.output.chunkLoadTimeout = 120000
+    return config
   },
 }
 

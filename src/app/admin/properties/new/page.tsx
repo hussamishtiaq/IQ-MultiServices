@@ -7,13 +7,20 @@ import { ArrowLeft, Loader2, Home, Layers, ImageIcon, MapPin } from 'lucide-reac
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/admin/ImageUpload'
 import { CURRENCY_OPTIONS } from '@/lib/format'
-import type { Currency, Area, ListingType, CompletionStatus, Furnishing } from '@/types'
+import type { Currency, Area, ListingType, CompletionStatus, Furnishing, StudioType } from '@/types'
 
 const PROPERTY_TYPES    = ['apartment', 'villa', 'commercial', 'land', 'office'] as const
 const PROPERTY_STATUSES = ['available', 'sold', 'rented'] as const
 const LISTING_TYPES: ListingType[]       = ['sale', 'rent']
 const COMPLETION_STATUSES: CompletionStatus[] = ['ready', 'off_plan', 'resale']
 const FURNISHINGS: Furnishing[]          = ['furnished', 'semi_furnished', 'unfurnished']
+const STUDIO_TYPES: { value: StudioType; label: string; hint: string }[] = [
+  { value: 'standard',    label: 'Standard',    hint: 'Simple open-plan layout' },
+  { value: 'alcove',      label: 'Alcove',       hint: 'Offset nook for sleeping area' },
+  { value: 'convertible', label: 'Convertible',  hint: 'Large enough to add a divider wall' },
+  { value: 'loft',        label: 'Loft',         hint: 'High ceilings or sleeping mezzanine' },
+  { value: 'micro',       label: 'Micro',        hint: 'Ultra-compact, typically < 350 m²' },
+]
 
 function SectionCard({ icon: Icon, title, children }: {
   icon: React.ElementType; title: string; children: React.ReactNode
@@ -48,6 +55,7 @@ export default function NewPropertyPage() {
     listing_type:      'sale' as ListingType,
     completion_status: 'ready' as CompletionStatus,
     furnishing:        '' as '' | Furnishing,
+    studio_type:       '' as '' | StudioType,
     type:              'apartment' as typeof PROPERTY_TYPES[number],
     bedrooms:          '',
     bathrooms:         '',
@@ -80,7 +88,8 @@ export default function NewPropertyPage() {
       area_id:           form.area_id || null,
       listing_type:      form.listing_type,
       completion_status: form.completion_status,
-      furnishing:        form.furnishing || null,
+      furnishing:        form.furnishing   || null,
+      studio_type:       form.studio_type  || null,
       type:              form.type,
       bedrooms:          form.bedrooms  ? parseInt(form.bedrooms)    : null,
       bathrooms:         form.bathrooms ? parseInt(form.bathrooms)   : null,
@@ -211,7 +220,10 @@ export default function NewPropertyPage() {
             <div>
               <label className="label">Bedrooms</label>
               <input type="number" min="0" value={form.bedrooms}
-                onChange={e => set('bedrooms', e.target.value)}
+                onChange={e => {
+                  set('bedrooms', e.target.value)
+                  if (e.target.value !== '0') set('studio_type', '')
+                }}
                 className="input-field" placeholder="—" />
             </div>
             <div>
@@ -221,6 +233,17 @@ export default function NewPropertyPage() {
                 className="input-field" placeholder="—" />
             </div>
           </div>
+          {form.bedrooms === '0' && (
+            <div>
+              <label className="label">Studio Layout</label>
+              <select value={form.studio_type} onChange={e => set('studio_type', e.target.value)} className="input-field">
+                <option value="">— Select layout (optional) —</option>
+                {STUDIO_TYPES.map(s => (
+                  <option key={s.value} value={s.value}>{s.label} — {s.hint}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Area (m²)</label>

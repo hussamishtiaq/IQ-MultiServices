@@ -70,7 +70,14 @@ export default function PropertyCard({ property: p, priority = false }: { proper
         {/* Stats */}
         {(p.bedrooms != null || p.bathrooms != null || p.area != null) && (
           <div className="flex items-center gap-4 text-slate-500 text-sm pb-4 mb-4 border-b border-slate-100">
-            {p.bedrooms  != null && <span className="flex items-center gap-1"><Bed       size={13} className="text-slate-400" /> {p.bedrooms} bd</span>}
+            {p.bedrooms != null && (
+              <span className="flex items-center gap-1">
+                <Bed size={13} className="text-slate-400" />
+                {p.bedrooms === 0
+                  ? <span>{p.studio_type ? p.studio_type.charAt(0).toUpperCase() + p.studio_type.slice(1) + ' Studio' : 'Studio'}</span>
+                  : <span>{p.bedrooms} bd</span>}
+              </span>
+            )}
             {p.bathrooms != null && <span className="flex items-center gap-1"><Bath      size={13} className="text-slate-400" /> {p.bathrooms} ba</span>}
             {p.area      != null && <span className="flex items-center gap-1"><Maximize2 size={13} className="text-slate-400" /> {p.area} m²</span>}
             <span className="ml-auto capitalize text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg">{p.type}</span>

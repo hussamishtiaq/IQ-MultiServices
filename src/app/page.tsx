@@ -1,3 +1,5 @@
+export const revalidate = 300   // ISR: re-render at most once every 5 minutes
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, ArrowDown, Building2, Briefcase, MapPin, Tag, Layers } from 'lucide-react'
@@ -11,15 +13,18 @@ import type { Property, Service, SiteSettings, Area } from '@/types'
 
 async function getHomeData() {
   const supabase = createClient()
+  const ok = <T>(p: PromiseLike<{ data: T | null; count?: number | null; error: unknown }>) =>
+    Promise.resolve(p).catch(() => ({ data: null as T | null, count: null, error: null }))
+
   const [propRes, svcRes, settingsRes, areasRes, countsRes] = await Promise.all([
-    supabase.from('properties').select('*').eq('featured', true).order('created_at', { ascending: false }).limit(3),
-    supabase.from('services').select('*').order('order', { ascending: true }).limit(6),
-    supabase.from('site_settings').select('key, value'),
-    supabase.from('areas').select('*').order('display_order', { ascending: true }).limit(6),
+    ok(supabase.from('properties').select('*').eq('featured', true).order('created_at', { ascending: false }).limit(3)),
+    ok(supabase.from('services').select('*').order('order', { ascending: true }).limit(6)),
+    ok(supabase.from('site_settings').select('key, value')),
+    ok(supabase.from('areas').select('*').order('display_order', { ascending: true }).limit(6)),
     Promise.all([
-      supabase.from('properties').select('id', { count: 'exact', head: true }),
-      supabase.from('services').select('id',   { count: 'exact', head: true }),
-      supabase.from('areas').select('id',      { count: 'exact', head: true }),
+      ok(supabase.from('properties').select('id', { count: 'exact', head: true })),
+      ok(supabase.from('services').select('id',   { count: 'exact', head: true })),
+      ok(supabase.from('areas').select('id',      { count: 'exact', head: true })),
     ]),
   ])
 
