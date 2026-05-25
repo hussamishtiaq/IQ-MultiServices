@@ -13,8 +13,17 @@ import type { Property, Service, SiteSettings, Area } from '@/types'
 
 async function getHomeData() {
   const supabase = createClient()
-  const ok = <T>(p: PromiseLike<{ data: T | null; count?: number | null; error: unknown }>) =>
-    Promise.resolve(p).catch(() => ({ data: null as T | null, count: null, error: null }))
+ const ok = async <T,>(p: PromiseLike<any>) => {
+  try {
+    return await p
+  } catch {
+    return {
+      data: null as T | null,
+      count: null,
+      error: null,
+    }
+  }
+}
 
   const [propRes, svcRes, settingsRes, areasRes, countsRes] = await Promise.all([
     ok(supabase.from('properties').select('*').eq('featured', true).order('created_at', { ascending: false }).limit(3)),
