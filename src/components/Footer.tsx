@@ -56,6 +56,13 @@ export default function Footer() {
 
         <div className="pt-6 text-center text-xs text-slate-500">
           © {new Date().getFullYear()} IQ MultiServices. All rights reserved.
+          {(process.env.NEXT_PUBLIC_COMPANY_ORN || process.env.NEXT_PUBLIC_TRADE_LICENSE) && (
+            <span className="block mt-1">
+              {process.env.NEXT_PUBLIC_COMPANY_ORN && <>RERA ORN {process.env.NEXT_PUBLIC_COMPANY_ORN}</>}
+              {process.env.NEXT_PUBLIC_COMPANY_ORN && process.env.NEXT_PUBLIC_TRADE_LICENSE && ' · '}
+              {process.env.NEXT_PUBLIC_TRADE_LICENSE && <>Trade Licence {process.env.NEXT_PUBLIC_TRADE_LICENSE}</>}
+            </span>
+          )}
         </div>
       </div>
     </footer>

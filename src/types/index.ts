@@ -32,6 +32,9 @@ export interface Property {
   images: string[]
   featured: boolean
   views_count: number
+  permit_number: string | null
+  agent_name: string | null
+  agent_brn: string | null
   created_at: string
 }
 

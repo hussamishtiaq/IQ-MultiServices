@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Loader2, Home, Layers, ImageIcon, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ImageUpload from '@/components/admin/ImageUpload'
+import ListingComplianceFields from '@/components/admin/ListingComplianceFields'
 import { CURRENCY_OPTIONS } from '@/lib/format'
 import type { Currency, Area, ListingType, CompletionStatus, Furnishing, StudioType } from '@/types'
 
@@ -62,6 +63,9 @@ export default function NewPropertyPage() {
     area:              '',
     status:            'available' as typeof PROPERTY_STATUSES[number],
     featured:          false,
+    permit_number:     '',
+    agent_name:        '',
+    agent_brn:         '',
   })
 
   const set = (key: string, value: string | boolean) =>
@@ -97,6 +101,9 @@ export default function NewPropertyPage() {
       status:            form.status,
       images,
       featured:          form.featured,
+      permit_number: form.permit_number.trim() || null,
+      agent_name:    form.agent_name.trim()    || null,
+      agent_brn:     form.agent_brn.trim()     || null,
     })
 
     if (dbErr) { setError(dbErr.message); setSaving(false); return }
@@ -261,6 +268,12 @@ export default function NewPropertyPage() {
             </div>
           </div>
         </SectionCard>
+
+        <ListingComplianceFields
+          value={{ permit_number: form.permit_number, agent_name: form.agent_name, agent_brn: form.agent_brn }}
+          onChange={(k, v) => set(k, v)}
+          listingActive={form.status === 'available'}
+        />
 
         <SectionCard icon={ImageIcon} title="Images">
           <ImageUpload value={images} onChange={setImages} />

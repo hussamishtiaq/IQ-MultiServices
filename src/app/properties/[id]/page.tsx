@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Bed, Bath, Maximize2, Star, Tag, Phone } from 'lucide-react'
+import { ArrowLeft, MapPin, Bed, Bath, Maximize2, Star, Tag, Phone, BadgeCheck, ShieldCheck } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import PropertyGallery from '@/components/PropertyGallery'
@@ -9,11 +9,13 @@ import LeadForm from '@/components/LeadForm'
 import FloatingCTAs from '@/components/FloatingCTAs'
 import TrackPropertyView from '@/components/TrackPropertyView'
 import Reviews from '@/components/Reviews'
+import PurchaseCalculator from '@/components/PurchaseCalculator'
 import { createClient } from '@/lib/supabase/server'
 import { safeContactHref } from '@/lib/safe-url'
 import { formatPrice } from '@/lib/format'
 import { PlatformIcon } from '@/lib/platform-icons'
 import { isUuid } from '@/lib/slug'
+import { goldenVisaLikely, toAed } from '@/lib/purchase-costs'
 import type { Property, Contact, Review } from '@/types'
 
 async function getPropertyByIdOrSlug(param: string) {
@@ -184,6 +186,12 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                       {property.completion_status === 'off_plan' ? 'Off-plan' : 'Resale'}
                     </span>
                   )}
+                  {goldenVisaLikely(property) && (
+                    <span title="Property investments of AED 2M+ (by DLD valuation) can qualify for the 10-year UAE Golden Visa"
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                      <BadgeCheck size={11} /> Golden Visa eligible*
+                    </span>
+                  )}
                   {property.furnishing && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 capitalize">
                       {property.furnishing.replace('_', ' ')}
@@ -224,6 +232,20 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                   </div>
                 )}
               </div>
+
+              {(property.permit_number || property.agent_brn) && (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-xs text-slate-600 space-y-1.5">
+                  <p className="flex items-center gap-1.5 font-semibold text-slate-800 text-sm"><ShieldCheck size={15} className="text-emerald-700" /> Verified listing</p>
+                  {property.permit_number && <p>DLD Trakheesi permit: <b className="text-slate-800">{property.permit_number}</b></p>}
+                  {property.agent_brn && <p>Agent: <b className="text-slate-800">{property.agent_name ?? '—'}</b> · BRN {property.agent_brn}</p>}
+                  {process.env.NEXT_PUBLIC_COMPANY_ORN && <p>Brokerage ORN: {process.env.NEXT_PUBLIC_COMPANY_ORN}</p>}
+                  <p className="text-slate-400 pt-1">Verify the permit on the Dubai REST app or dubailand.gov.ae.</p>
+                </div>
+              )}
+
+              {property.listing_type === 'sale' && property.price != null && property.status === 'available' && (
+                <PurchaseCalculator priceAed={toAed(property.price, property.currency)} offPlan={property.completion_status === 'off_plan'} />
+              )}
 
               {/* Lead capture form */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">

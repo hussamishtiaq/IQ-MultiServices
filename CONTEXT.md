@@ -118,6 +118,7 @@ src/
 | `0009_studio_type.sql` | Adds studio_type column to properties |
 | `0010_property_slug_autogen.sql` | Trigger auto-generates `properties.slug` from title (collision-safe); backfills existing rows |
 | `0011_messaging.sql` | Messaging: `audience_contacts`, `suppressions`, `campaigns`, `messages`, `v_channel_health_7d`; seeds `business_postal_address` setting |
+| `0012_listing_compliance.sql` | Adds `permit_number` (Trakheesi), `agent_name`, `agent_brn` to properties — **run before saving properties in admin** |
 
 ---
 
@@ -131,6 +132,10 @@ NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 RESEND_API_KEY=              # optional — emails no-op if missing
 LEAD_EMAIL_TO=               # where lead notifications go
 LEAD_EMAIL_FROM=             # sender address (must be verified in Resend)
+
+# RERA compliance shown in footer / listing pages
+NEXT_PUBLIC_COMPANY_ORN=     # RERA office registration number
+NEXT_PUBLIC_TRADE_LICENSE=   # DED trade licence number
 
 # Messaging (bulk email + WhatsApp, two-way)
 SUPABASE_SERVICE_ROLE_KEY=   # server-only; webhooks, cron dispatch, unsubscribe
@@ -166,6 +171,12 @@ MESSAGING_DRY_RUN=false      # true = simulate sends (no provider calls)
 - A DB trigger (`0010_property_slug_autogen.sql`) fills `slug` from `title` on insert/update of title, unique via `-1`, `-2`… suffix
 - Visiting by UUID when a slug exists redirects (SEO canonicalization) to the slug URL
 - `PropertyCard` and `sitemap.ts` always link via `slug ?? id`
+
+### Dubai buyer tools & listing compliance
+- `src/lib/purchase-costs.ts` — fee constants (DLD 4%, trustee AED 2k/4k + VAT, agency 2% + VAT, mortgage reg 0.25% + AED 290), `monthlyPayment`, `goldenVisaLikely` (sale ≥ AED 2M, not land; USD converted at 3.6725 peg). Update constants here if DLD fees change
+- `PurchaseCalculator` renders on available sale listings (off-plan: no agency/trustee, no mortgage toggle)
+- Golden Visa badge on cards + detail is an *indicator* — real eligibility uses DLD valuation
+- Listings show Trakheesi permit + agent BRN when set; admin form warns when an available listing has no permit
 
 ### Messaging (bulk email + WhatsApp, two-way) — `src/lib/messaging/`
 - **Why it exists:** bulk cold messaging gets numbers banned and domains blocklisted. The system enforces the rules in code so that can't happen by accident.
@@ -217,5 +228,6 @@ Supported query params: `page, type, status, listing, completion, area(slug), be
 
 - Demo environment separation (Option A: separate Supabase project for demos)
 - Map view (Mapbox or Google Maps) for area pages
-- Mortgage / ROI calculator widget
+- ROI / rental-yield calculator (mortgage + purchase-cost calculator is done)
+- Buyer guide content pages (process, fees, off-plan vs ready, Golden Visa, glossary) — SEO
 - Multi-language support (Arabic)

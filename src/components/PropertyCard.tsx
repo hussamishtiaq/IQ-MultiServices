@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { MapPin, Bed, Bath, Maximize2, Star, ArrowRight } from 'lucide-react'
 import type { Property } from '@/types'
 import { formatPrice } from '@/lib/format'
+import { goldenVisaLikely } from '@/lib/purchase-costs'
 
 const statusConfig: Record<Property['status'], { label: string; className: string }> = {
   available: { label: 'Available', className: 'bg-emerald-500 text-white'  },
@@ -43,6 +44,12 @@ export default function PropertyCard({ property: p, priority = false }: { proper
         {p.featured && (
           <span className="absolute top-3 right-3 w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center shadow-md">
             <Star size={13} className="text-white" fill="currentColor" />
+          </span>
+        )}
+
+        {goldenVisaLikely(p) && (
+          <span className="absolute bottom-3 right-3 bg-yellow-400 text-yellow-950 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide shadow">
+            Golden Visa
           </span>
         )}
 
