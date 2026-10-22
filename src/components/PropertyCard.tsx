@@ -85,7 +85,7 @@ export default function PropertyCard({ property: p, priority = false }: { proper
         )}
 
         <Link
-          href={`/properties/${p.id}`}
+          href={`/properties/${p.slug ?? p.id}`}
           className="mt-auto flex items-center justify-center gap-2 py-2.5 w-full rounded-xl border-2 border-emerald-800 text-emerald-800 font-semibold text-sm hover:bg-emerald-800 hover:text-white transition-all duration-200 group/btn"
         >
           View Details

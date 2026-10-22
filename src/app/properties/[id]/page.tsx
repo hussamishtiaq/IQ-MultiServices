@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Bed, Bath, Maximize2, Star, Tag, Phone } from 'lucide-react'
 import Navbar from '@/components/Navbar'
@@ -13,15 +13,17 @@ import { createClient } from '@/lib/supabase/server'
 import { safeContactHref } from '@/lib/safe-url'
 import { formatPrice } from '@/lib/format'
 import { PlatformIcon } from '@/lib/platform-icons'
+import { isUuid } from '@/lib/slug'
 import type { Property, Contact, Review } from '@/types'
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+async function getPropertyByIdOrSlug(param: string) {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('properties')
-    .select('title, description, location, status, type, price, images')
-    .eq('id', params.id)
-    .single()
+  const column = isUuid(param) ? 'id' : 'slug'
+  return supabase.from('properties').select('*').eq(column, param).single()
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const { data } = await getPropertyByIdOrSlug(params.id)
 
   if (!data) return { title: 'Property Not Found' }
 
@@ -31,17 +33,18 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     `${data.type} in ${data.location ?? 'our portfolio'} — ${data.status}.`
   const image = (data.images as string[] | null)?.[0]
   const noindex = data.status === 'sold' || data.status === 'rented'
+  const canonicalSlug = (data.slug as string | null) ?? data.id
 
   return {
     title,
     description: desc,
-    alternates: { canonical: `/properties/${params.id}` },
+    alternates: { canonical: `/properties/${canonicalSlug}` },
     robots: noindex ? { index: false, follow: true } : undefined,
     openGraph: {
       type: 'article',
       title,
       description: desc,
-      url: `/properties/${params.id}`,
+      url: `/properties/${canonicalSlug}`,
       images: image ? [{ url: image, alt: title }] : undefined,
     },
     twitter: {
@@ -55,22 +58,27 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function PropertyDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
-  const [propRes, contactsRes, reviewsRes] = await Promise.all([
-    supabase.from('properties').select('*').eq('id', params.id).single(),
+  const [propRes, contactsRes] = await Promise.all([
+    getPropertyByIdOrSlug(params.id),
     supabase.from('contacts').select('*').order('order', { ascending: true }).limit(3),
-    supabase.from('reviews')
-      .select('*')
-      .eq('target_type', 'property')
-      .eq('target_id', params.id)
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false })
-      .limit(20),
   ])
 
   if (!propRes.data) notFound()
-  if (contactsRes.error) console.error('contacts query failed:', contactsRes.error)
 
   const property = propRes.data as Property
+
+  // Canonicalize id-based URLs to the slug for SEO once a slug exists.
+  if (property.slug && params.id !== property.slug) redirect(`/properties/${property.slug}`)
+
+  const reviewsRes = await supabase.from('reviews')
+    .select('*')
+    .eq('target_type', 'property')
+    .eq('target_id', property.id)
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (contactsRes.error) console.error('contacts query failed:', contactsRes.error)
   const contacts = (contactsRes.data as Contact[]) ?? []
   const reviews  = (reviewsRes.data as Review[]) ?? []
 

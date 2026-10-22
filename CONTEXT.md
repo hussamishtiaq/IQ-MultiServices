@@ -116,6 +116,7 @@ src/
 | `0007_reviews.sql` | Creates reviews table with RLS |
 | `0008_demo_seed.sql` | Demo data: 15 properties, 5 projects, 8 reviews, 6 leads, 350 view events |
 | `0009_studio_type.sql` | Adds studio_type column to properties |
+| `0010_property_slug_autogen.sql` | Trigger auto-generates `properties.slug` from title (collision-safe); backfills existing rows |
 
 ---
 
@@ -142,6 +143,12 @@ LEAD_EMAIL_FROM=             # sender address (must be verified in Resend)
 ### Platform icons
 - `src/lib/platform-icons.tsx` maps `platform: string → React component`
 - **NEVER** store JSX/ReactNode in the DB. Store the platform string, render the icon at display time.
+
+### Property URLs
+- `/properties/[id]` accepts either the UUID or the slug — `src/lib/slug.ts` `isUuid()` picks the lookup column
+- A DB trigger (`0010_property_slug_autogen.sql`) fills `slug` from `title` on insert/update of title, unique via `-1`, `-2`… suffix
+- Visiting by UUID when a slug exists redirects (SEO canonicalization) to the slug URL
+- `PropertyCard` and `sitemap.ts` always link via `slug ?? id`
 
 ### Properties API (`/api/properties`)
 Supported query params: `page, type, status, listing, completion, area(slug), beds, studio_type, q`  
@@ -174,7 +181,6 @@ Supported query params: `page, type, status, listing, completion, area(slug), be
 ## Planned / Not Yet Built
 
 - Demo environment separation (Option A: separate Supabase project for demos)
-- Property slug-based URLs (`/properties/palm-villa-4br` instead of UUID)
 - Map view (Mapbox or Google Maps) for area pages
 - Mortgage / ROI calculator widget
 - Multi-language support (Arabic)
