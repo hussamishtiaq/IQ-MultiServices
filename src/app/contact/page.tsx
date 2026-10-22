@@ -14,7 +14,7 @@ export const metadata = {
 }
 
 export default async function ContactPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase.from('contacts').select('*').order('order', { ascending: true })
   const contacts = (data as Contact[]) ?? []
 

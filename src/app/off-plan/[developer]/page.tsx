@@ -10,7 +10,7 @@ import { formatPrice } from '@/lib/format'
 import type { Developer, Project } from '@/types'
 
 export async function generateMetadata({ params }: { params: { developer: string } }): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase.from('developers').select('name, description').eq('slug', params.developer).single()
   if (!data) return { title: 'Developer Not Found' }
   return {
@@ -25,7 +25,7 @@ interface ProjectWithArea extends Project {
 }
 
 export default async function DeveloperPage({ params }: { params: { developer: string } }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: dev } = await supabase.from('developers').select('*').eq('slug', params.developer).single()
   if (!dev) notFound()
   const developer = dev as Developer

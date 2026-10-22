@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [propsRes, areasRes] = await Promise.all([
     supabase.from('properties').select('id, slug, created_at').eq('status', 'available'),
     supabase.from('areas').select('slug, created_at'),

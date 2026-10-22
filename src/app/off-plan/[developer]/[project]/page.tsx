@@ -19,7 +19,7 @@ interface ProjectFull extends Project {
 }
 
 export async function generateMetadata({ params }: { params: { developer: string; project: string } }): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase
     .from('projects')
     .select('name, description, hero_image, starting_price_aed, developers(name)')
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: { params: { developer: string
 }
 
 export default async function ProjectDetailPage({ params }: { params: { developer: string; project: string } }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [projRes, contactsRes] = await Promise.all([
     supabase
       .from('projects')

@@ -16,7 +16,7 @@ import { PlatformIcon } from '@/lib/platform-icons'
 import type { Property, Contact, Review } from '@/types'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase
     .from('properties')
     .select('title, description, location, status, type, price, images')
@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 export default async function PropertyDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [propRes, contactsRes, reviewsRes] = await Promise.all([
     supabase.from('properties').select('*').eq('id', params.id).single(),
     supabase.from('contacts').select('*').order('order', { ascending: true }).limit(3),

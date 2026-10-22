@@ -9,7 +9,7 @@ import type { Service, SiteSettings } from '@/types'
 export const metadata = { title: 'Our Services | IQ MultiServices' }
 
 export default async function ServicesPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [svcRes, settingsRes] = await Promise.all([
     supabase.from('services').select('*').order('order', { ascending: true }),
     supabase.from('site_settings').select('key, value'),

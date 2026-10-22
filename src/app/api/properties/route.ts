@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const from = (page - 1) * PAGE_SIZE
   const to   = from + PAGE_SIZE - 1
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Resolve area slug → id once (cheap, indexed)
   let areaId: string | null = null

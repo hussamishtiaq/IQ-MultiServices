@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get('user-agent')?.slice(0, 500) ?? null
   const referrer  = request.headers.get('referer')?.slice(0, 500) ?? null
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: lead, error } = await supabase.from('leads').insert({
     property_id:        body.property_id ?? null,
     project_id:         body.project_id  ?? null,

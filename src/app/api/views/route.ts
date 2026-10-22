@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     request.headers.get('cf-ipcountry') ??
     null
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.from('property_views').insert({
     property_id: body.property_id,
     area_id:     body.area_id ?? null,

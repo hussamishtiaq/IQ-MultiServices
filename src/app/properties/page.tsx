@@ -24,17 +24,13 @@ export const metadata: Metadata = {
 const PAGE_SIZE = 9
 
 export default async function PropertiesPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const [propsRes, areasRes] = await Promise.all([
     supabase.from('properties').select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(0, PAGE_SIZE - 1)
-      .then(r => r)
-      .catch(() => ({ data: [] as Property[], count: 0, error: null })),
-    supabase.from('areas').select('*').order('display_order', { ascending: true })
-      .then(r => r)
-      .catch(() => ({ data: [] as Area[], error: null })),
+      .range(0, PAGE_SIZE - 1),
+    supabase.from('areas').select('*').order('display_order', { ascending: true }),
   ])
 
   const initialData = {

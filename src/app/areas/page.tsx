@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 }
 
 export default async function AreasIndexPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [areasRes, countsRes] = await Promise.all([
     supabase.from('areas').select('*').order('display_order', { ascending: true }),
     supabase.from('properties').select('area_id', { count: 'exact', head: false }),

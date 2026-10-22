@@ -12,7 +12,7 @@ import { formatPrice } from '@/lib/format'
 import type { Property, Service, SiteSettings, Area } from '@/types'
 
 async function getHomeData() {
-  const supabase = createClient()
+  const supabase = await createClient()
  const ok = async <T,>(p: PromiseLike<any>) => {
   try {
     return await p

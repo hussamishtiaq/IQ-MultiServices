@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 export const metadata = { title: 'Dashboard | IQ Admin' }
 
 async function getStats() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [p, s, c] = await Promise.all([
     supabase.from('properties').select('id', { count: 'exact', head: true }),
     supabase.from('services').select('id',   { count: 'exact', head: true }),

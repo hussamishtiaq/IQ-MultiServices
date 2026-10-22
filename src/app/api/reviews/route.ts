@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Rating must be 1–5' }, { status: 400 })
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.from('reviews').insert({
     target_type:    body.target_type,
     target_id:      body.target_id,

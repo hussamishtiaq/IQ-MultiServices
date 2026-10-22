@@ -20,7 +20,7 @@ interface ProjectWithRefs extends Project {
 }
 
 export default async function OffPlanPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const [devsRes, projsRes] = await Promise.all([
     supabase.from('developers').select('*').order('display_order', { ascending: true }),
     supabase

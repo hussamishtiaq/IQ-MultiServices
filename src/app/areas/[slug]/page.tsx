@@ -13,7 +13,7 @@ import type { Area, Property } from '@/types'
 const UNIT_TYPES = ['Studio', '1BR', '2BR', '3BR', '4BR', 'Villa'] as const
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase.from('areas').select('name, description').eq('slug', params.slug).single()
   if (!data) return { title: 'Area Not Found' }
   const desc = data.description?.slice(0, 160) ?? `Explore properties for sale and rent in ${data.name}, Dubai.`
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function AreaDetailPage({ params }: { params: { slug: string } }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: area } = await supabase.from('areas').select('*').eq('slug', params.slug).single()
   if (!area) notFound()
   const a = area as Area
