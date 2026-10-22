@@ -117,6 +117,7 @@ src/
 | `0008_demo_seed.sql` | Demo data: 15 properties, 5 projects, 8 reviews, 6 leads, 350 view events |
 | `0009_studio_type.sql` | Adds studio_type column to properties |
 | `0010_property_slug_autogen.sql` | Trigger auto-generates `properties.slug` from title (collision-safe); backfills existing rows |
+| `0011_messaging.sql` | Messaging: `audience_contacts`, `suppressions`, `campaigns`, `messages`, `v_channel_health_7d`; seeds `business_postal_address` setting |
 
 ---
 
@@ -130,6 +131,22 @@ NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 RESEND_API_KEY=              # optional — emails no-op if missing
 LEAD_EMAIL_TO=               # where lead notifications go
 LEAD_EMAIL_FROM=             # sender address (must be verified in Resend)
+
+# Messaging (bulk email + WhatsApp, two-way)
+SUPABASE_SERVICE_ROLE_KEY=   # server-only; webhooks, cron dispatch, unsubscribe
+MARKETING_EMAIL_FROM=        # e.g. "IQ MultiServices <news@mail.yourdomain.ae>" (use a subdomain)
+MARKETING_EMAIL_REPLY_TO=    # address on a Resend receiving domain so replies reach the inbox
+MARKETING_UNSUBSCRIBE_MAILTO=# optional mailto for List-Unsubscribe
+RESEND_WEBHOOK_SECRET=       # whsec_... from Resend webhook settings
+EMAIL_MAX_DAILY=2000         # ceiling after warm-up; EMAIL_BATCH_SIZE=50 per dispatch run
+WHATSAPP_ACCESS_TOKEN=       # Meta system-user permanent token
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_APP_SECRET=         # verifies X-Hub-Signature-256
+WHATSAPP_VERIFY_TOKEN=       # any random string; entered in Meta webhook config
+WHATSAPP_DAILY_CAP=250       # set to your current Meta messaging tier
+CRON_SECRET=                 # scheduler auth for /api/messaging/dispatch
+MESSAGING_DRY_RUN=false      # true = simulate sends (no provider calls)
+# MESSAGING_SEND_START_HOUR=9 MESSAGING_SEND_END_HOUR=18 MESSAGING_TIMEZONE=Asia/Dubai
 ```
 
 ---
@@ -149,6 +166,24 @@ LEAD_EMAIL_FROM=             # sender address (must be verified in Resend)
 - A DB trigger (`0010_property_slug_autogen.sql`) fills `slug` from `title` on insert/update of title, unique via `-1`, `-2`… suffix
 - Visiting by UUID when a slug exists redirects (SEO canonicalization) to the slug URL
 - `PropertyCard` and `sitemap.ts` always link via `slug ?? id`
+
+### Messaging (bulk email + WhatsApp, two-way) — `src/lib/messaging/`
+- **Why it exists:** bulk cold messaging gets numbers banned and domains blocklisted. The system enforces the rules in code so that can't happen by accident.
+- `compliance.ts` — pure rules: consent eligibility, Dubai 09:00–18:00 send window (UAE Cabinet Res. 56/2024), email warm-up caps, WhatsApp 24h service window, health circuit breaker (bounce >2%, complaints >0.1%, WA failures >10%), STOP/START keywords (EN + AR)
+- Consent model: `email_consent` opted_in | implied (existing relationship) | unknown | opted_out; `whatsapp_consent` opted_in | unknown | opted_out. Marketing email needs opted_in/implied; marketing WhatsApp needs opted_in. `unknown` = 1:1/utility only
+- `suppressions` is the global do-not-contact list, re-checked at **send time**, not just at launch. Complaints/hard bounces can't be removed in the UI
+- Flow: campaign draft → `launch` queues eligible recipients → `/api/messaging/dispatch` (cron every 10 min, or "Send next batch" button) sends throttled batches → provider webhooks update status, store replies, and auto-suppress on STOP/unsubscribe/bounce/complaint/Meta 131050
+- `service.ts` takes a `MessagingStore` (Supabase impl in `store.ts`, in-memory impl in `__tests__/memory-store.ts`) so flows are unit-tested. Run `npm test`
+- Unsubscribe: RFC 8058 one-click via POST `/api/unsubscribe?t=TOKEN`; GET only shows `/unsubscribe` confirm page (link scanners prefetch GETs)
+- Lead form has two unticked consent checkboxes; ticks are stored with timestamp + IP as `*_consent_source`
+- Admin: `/admin/messaging` (health + setup checklist), `/inbox`, `/campaigns`, `/contacts` (CSV import requires a consent basis + evidence note)
+
+**Go-live setup**
+1. Run `0011_messaging.sql`; set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`
+2. Email: add a sending subdomain in Resend, publish its SPF/DKIM records + a DMARC record (`p=none` minimum), enable receiving (MX) for replies, add webhook → `https://<site>/api/webhooks/resend` with events sent/delivered/bounced/complained/received/opened
+3. WhatsApp: Meta Business verification → WhatsApp Business Account → phone number → system-user token. Webhook → `https://<site>/api/webhooks/whatsapp` (verify token = `WHATSAPP_VERIFY_TOKEN`), subscribe to `messages` and `phone_number_quality_update`. Create + get templates approved in WhatsApp Manager (add a "Stop promotions" quick reply to marketing templates)
+4. Scheduler: `vercel.json` runs dispatch every 10 min (Vercel Pro; Hobby allows daily only — otherwise point any external cron at `GET /api/messaging/dispatch` with `Authorization: Bearer $CRON_SECRET`)
+5. Start with `MESSAGING_DRY_RUN=true`, launch a test campaign to your own addresses, then switch off
 
 ### Properties API (`/api/properties`)
 Supported query params: `page, type, status, listing, completion, area(slug), beds, studio_type, q`  
@@ -184,4 +219,3 @@ Supported query params: `page, type, status, listing, completion, area(slug), be
 - Map view (Mapbox or Google Maps) for area pages
 - Mortgage / ROI calculator widget
 - Multi-language support (Arabic)
-- WhatsApp chat widget integration

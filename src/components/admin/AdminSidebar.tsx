@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Building2, LayoutDashboard, Home, Briefcase, Phone, MapPin, MessageSquare,
   BarChart3, Boxes, Layers, Star, Settings, LogOut, Menu, X, Bell, ChevronRight,
+  Send, Inbox, Megaphone, Users,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -49,6 +50,15 @@ const groups = [
       { href: '/admin/leads',      label: 'Leads',      icon: MessageSquare, exact: false },
       { href: '/admin/reviews',    label: 'Reviews',    icon: Star,          exact: false },
       { href: '/admin/analytics',  label: 'Analytics',  icon: BarChart3,     exact: false },
+    ],
+  },
+  {
+    label: 'MESSAGING',
+    links: [
+      { href: '/admin/messaging',           label: 'Overview',  icon: Send,      exact: true  },
+      { href: '/admin/messaging/inbox',     label: 'Inbox',     icon: Inbox,     exact: false },
+      { href: '/admin/messaging/campaigns', label: 'Campaigns', icon: Megaphone, exact: false },
+      { href: '/admin/messaging/contacts',  label: 'Audience',  icon: Users,     exact: false },
     ],
   },
   {

@@ -27,6 +27,8 @@ export default function LeadForm({
   const [message, setMessage] = useState(defaultMessage)
   const [channel, setChannel] = useState<'whatsapp' | 'phone' | 'email'>('whatsapp')
   const [website, setWebsite] = useState('')   // honeypot
+  const [consentWhatsapp, setConsentWhatsapp] = useState(false)
+  const [consentEmail, setConsentEmail]       = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const [done, setDone]       = useState(false)
@@ -44,6 +46,7 @@ export default function LeadForm({
       body: JSON.stringify({
         property_id: propertyId, project_id: projectId, area_id: areaId, source,
         name, phone, email, message, preferred_contact: channel, website,
+        consent_whatsapp: consentWhatsapp, consent_email: consentEmail,
       }),
     })
     setLoading(false)
@@ -130,6 +133,19 @@ export default function LeadForm({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="flex items-start gap-2 text-[11px] text-slate-500 leading-snug cursor-pointer">
+          <input type="checkbox" checked={consentWhatsapp} onChange={e => setConsentWhatsapp(e.target.checked)}
+            className="mt-0.5 accent-emerald-700" />
+          Send me new listings and offers from IQ MultiServices on WhatsApp. Reply STOP anytime to opt out.
+        </label>
+        <label className="flex items-start gap-2 text-[11px] text-slate-500 leading-snug cursor-pointer">
+          <input type="checkbox" checked={consentEmail} onChange={e => setConsentEmail(e.target.checked)}
+            className="mt-0.5 accent-emerald-700" />
+          Email me property updates from IQ MultiServices. Unsubscribe anytime.
+        </label>
       </div>
 
       {error && (

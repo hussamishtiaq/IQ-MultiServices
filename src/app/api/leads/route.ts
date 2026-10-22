@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
+import { adminStore } from '@/lib/messaging/server'
+import { upsertContactFromLead } from '@/lib/messaging/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +18,8 @@ interface LeadBody {
   message?:     string
   preferred_contact?: 'whatsapp' | 'phone' | 'email'
   website?:     string  // honeypot
+  consent_email?:    boolean
+  consent_whatsapp?: boolean
 }
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
@@ -66,6 +70,14 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Add to the messaging audience with timestamped consent. Best-effort: never fail the lead.
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && lead) {
+    await upsertContactFromLead(adminStore(), {
+      id: lead.id, name, email, phone, country_code: countryCode,
+      consent_email: body.consent_email === true, consent_whatsapp: body.consent_whatsapp === true, ip,
+    }).catch(e => console.error('[leads] audience upsert failed', e))
   }
 
   // Fire-and-forget admin notification (does not block response)
