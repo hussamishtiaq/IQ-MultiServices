@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { messagingConfig } from '@/lib/messaging/config'
 import { adminStore } from '@/lib/messaging/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { handleInboundWhatsApp } from '@/lib/sales/server'
 import { applyEvents } from '@/lib/messaging/service'
 import { verifyMetaSignature } from '@/lib/messaging/signatures'
 import { parseWhatsAppWebhook } from '@/lib/messaging/webhook-parsers'
@@ -30,7 +32,10 @@ export async function POST(request: NextRequest) {
   const events = parseWhatsAppWebhook(payload)
   if (!events.length) return NextResponse.json({ ok: true })
   try {
-    await applyEvents(adminStore(), cfg, events)
+    const db = createAdminClient()
+    await applyEvents(adminStore(), cfg, events, {
+      onInbound: (contact, channel, body) => channel === 'whatsapp' ? handleInboundWhatsApp(db, cfg, contact, body) : Promise.resolve(),
+    })
   } catch (e) {
     console.error('[whatsapp webhook]', e)
     // Non-2xx makes Meta retry, which is what we want for transient DB errors.

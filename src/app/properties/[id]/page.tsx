@@ -10,12 +10,14 @@ import FloatingCTAs from '@/components/FloatingCTAs'
 import TrackPropertyView from '@/components/TrackPropertyView'
 import Reviews from '@/components/Reviews'
 import PurchaseCalculator from '@/components/PurchaseCalculator'
+import PropertyActions from '@/components/PropertyActions'
 import { createClient } from '@/lib/supabase/server'
 import { safeContactHref } from '@/lib/safe-url'
 import { formatPrice } from '@/lib/format'
 import { PlatformIcon } from '@/lib/platform-icons'
 import { isUuid } from '@/lib/slug'
 import { goldenVisaLikely, toAed } from '@/lib/purchase-costs'
+import { describeSearch, propertyRef, whatsappInquiryText, whatsappLink } from '@/lib/sales/core'
 import type { Property, Contact, Review } from '@/types'
 
 async function getPropertyByIdOrSlug(param: string) {
@@ -81,6 +83,22 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
     .limit(20)
 
   if (contactsRes.error) console.error('contacts query failed:', contactsRes.error)
+
+  const [waRes, areaRes] = await Promise.all([
+    supabase.from('contacts').select('value').ilike('platform', 'whatsapp').order('order', { ascending: true }).limit(1),
+    property.area_id ? supabase.from('areas').select('name').eq('id', property.area_id).maybeSingle() : Promise.resolve({ data: null }),
+  ])
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  const waNumber = ((waRes.data?.[0]?.value as string | undefined) ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '').replace(/\D/g, '')
+  const waAskText = whatsappInquiryText(property, siteUrl, 'ask')
+  const alertCriteria = {
+    listing_type: property.listing_type,
+    area_id: property.area_id ?? undefined,
+    type: property.type,
+    min_beds: property.bedrooms ?? undefined,
+    max_price_aed: property.price != null ? Math.round(toAed(property.price, property.currency) * 1.2) : undefined,
+  }
+  const areaName = (areaRes.data as { name: string } | null)?.name ?? null
   const contacts = (contactsRes.data as Contact[]) ?? []
   const reviews  = (reviewsRes.data as Review[]) ?? []
 
@@ -199,6 +217,8 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                   )}
                 </div>
 
+                <p className="text-[11px] text-slate-400 -mt-2 mb-3">Ref: {propertyRef(property.id)}</p>
+
                 {property.location && (
                   <div className="flex items-start gap-2 text-slate-600 text-sm mb-4">
                     <MapPin size={15} className="flex-shrink-0 mt-0.5 text-emerald-600" />
@@ -242,6 +262,16 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                   <p className="text-slate-400 pt-1">Verify the permit on the Dubai REST app or dubailand.gov.ae.</p>
                 </div>
               )}
+
+              <PropertyActions
+                propertyId={property.id}
+                propertyTitle={property.title}
+                whatsappHref={waNumber ? whatsappLink(waNumber, waAskText) : null}
+                whatsappVisitHref={waNumber ? whatsappLink(waNumber, whatsappInquiryText(property, siteUrl, 'visit')) : null}
+                alertCriteria={alertCriteria}
+                alertLabel={describeSearch(alertCriteria, areaName)}
+                canBook={property.status === 'available'}
+              />
 
               {property.listing_type === 'sale' && property.price != null && property.status === 'available' && (
                 <PurchaseCalculator priceAed={toAed(property.price, property.currency)} offPlan={property.completion_status === 'off_plan'} />
@@ -299,7 +329,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
           </div>
         </div>
       </main>
-      <FloatingCTAs contacts={contacts} />
+      <FloatingCTAs contacts={contacts} whatsappNumber={waNumber || undefined} whatsappText={waAskText} />
       <Footer />
     </>
   )

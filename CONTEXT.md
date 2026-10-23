@@ -119,6 +119,7 @@ src/
 | `0010_property_slug_autogen.sql` | Trigger auto-generates `properties.slug` from title (collision-safe); backfills existing rows |
 | `0011_messaging.sql` | Messaging: `audience_contacts`, `suppressions`, `campaigns`, `messages`, `v_channel_health_7d`; seeds `business_postal_address` setting |
 | `0012_listing_compliance.sql` | Adds `permit_number` (Trakheesi), `agent_name`, `agent_brn` to properties — **run before saving properties in admin** |
+| `0013_sales_automation.sql` | `agents`, `viewings`, `saved_searches`, `property_alerts_sent`; leads gain `assigned_agent_id`, `next_follow_up_at`, `notes`, `contact_id` |
 
 ---
 
@@ -136,6 +137,11 @@ LEAD_EMAIL_FROM=             # sender address (must be verified in Resend)
 # RERA compliance shown in footer / listing pages
 NEXT_PUBLIC_COMPANY_ORN=     # RERA office registration number
 NEXT_PUBLIC_TRADE_LICENSE=   # DED trade licence number
+NEXT_PUBLIC_WHATSAPP_NUMBER= # click-to-chat number on cards (detail page prefers Contacts → platform "whatsapp")
+WHATSAPP_ACK_TEMPLATE=       # optional approved utility templates; without them WhatsApp
+WHATSAPP_VIEWING_TEMPLATE=   #   acks/confirmations/alerts are skipped (email still sent)
+WHATSAPP_ALERT_TEMPLATE=
+WHATSAPP_TEMPLATE_LANG=en
 
 # Messaging (bulk email + WhatsApp, two-way)
 SUPABASE_SERVICE_ROLE_KEY=   # server-only; webhooks, cron dispatch, unsubscribe
@@ -177,6 +183,15 @@ MESSAGING_DRY_RUN=false      # true = simulate sends (no provider calls)
 - `PurchaseCalculator` renders on available sale listings (off-plan: no agency/trustee, no mortgage toggle)
 - Golden Visa badge on cards + detail is an *indicator* — real eligibility uses DLD valuation
 - Listings show Trakheesi permit + agent BRN when set; admin form warns when an available listing has no permit
+
+### Sales automation — `src/lib/sales/` (core.ts = pure + tested, server.ts = Supabase flows)
+- Listing ref `IQ-XXXXXX` = first 6 hex of the property UUID. "Ask on WhatsApp" buttons (cards, detail, floating CTA) prefill title + price + ref + URL
+- Inbound WhatsApp containing a ref → contact + lead (`source='whatsapp'`) + round-robin agent + verified listing summary (once per listing per 30 days). `VISIT` → booking link. Wired via `applyEvents(..., { onInbound })`
+- Every new lead (`processNewLead`): follow-up = +24h, round-robin agent (least recently assigned active agent) + agent email, acknowledgment email (and WhatsApp template if `WHATSAPP_ACK_TEMPLATE`)
+- Viewings: Dubai slots 10:00–18:00, hourly, 14 days ahead, 3h minimum notice; unique indexes stop double-booking per property and per agent. Admin confirm → confirmation; dispatch sends reminders ~2–26h before
+- Saved searches: explicit opt-in on the listing page; dispatch emails matches for listings created after signup (once per listing, inside the send window, unsubscribe link)
+- Admin: `/admin/agents`, `/admin/viewings`, Leads page has agent + follow-up columns and "Follow-ups due" filter
+- E2E: a Playwright script (kept outside the repo) drove 19 UI workflows against the real DB in dry-run mode and cleaned up after itself
 
 ### Messaging (bulk email + WhatsApp, two-way) — `src/lib/messaging/`
 - **Why it exists:** bulk cold messaging gets numbers banned and domains blocklisted. The system enforces the rules in code so that can't happen by accident.

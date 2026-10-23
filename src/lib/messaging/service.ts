@@ -235,19 +235,24 @@ async function getOrCreateInboundContact(store: MessagingStore, channel: Channel
   })
 }
 
-export async function applyEvents(store: MessagingStore, cfg: MessagingConfig, events: NormalizedEvent[]): Promise<void> {
+export interface EventHooks {
+  /** Runs after an inbound message is stored, unless it was an opt-out/opt-in keyword. */
+  onInbound?: (contact: AudienceContact, channel: Channel, body: string | null) => Promise<void>
+}
+
+export async function applyEvents(store: MessagingStore, cfg: MessagingConfig, events: NormalizedEvent[], hooks: EventHooks = {}): Promise<void> {
   for (const ev of events) {
     if (ev.kind === 'quality') {
       const bad = /FLAG|DOWNGRADE|RED|LOW/i.test(ev.event)
       if (bad) await pauseChannel(store, 'whatsapp', `Meta quality update: ${ev.event}${ev.currentLimit ? ` (limit ${ev.currentLimit})` : ''}`)
       continue
     }
-    if (ev.kind === 'inbound') await handleInbound(store, cfg, ev)
+    if (ev.kind === 'inbound') await handleInbound(store, cfg, ev, hooks)
     else await handleStatus(store, ev)
   }
 }
 
-async function handleInbound(store: MessagingStore, cfg: MessagingConfig, ev: Extract<NormalizedEvent, { kind: 'inbound' }>) {
+async function handleInbound(store: MessagingStore, cfg: MessagingConfig, ev: Extract<NormalizedEvent, { kind: 'inbound' }>, hooks: EventHooks) {
   if (await store.findMessageByProviderId(ev.channel, ev.providerId)) return // provider retry
 
   const address = ev.channel === 'email' ? normalizeEmail(ev.from) : normalizePhone('+' + ev.from)
@@ -276,7 +281,9 @@ async function handleInbound(store: MessagingStore, cfg: MessagingConfig, ev: Ex
   if (!contact.name && ev.fromName) patch.name = ev.fromName
 
   const keywordText = ev.channel === 'email' ? (ev.subject && isOptOutMessage(ev.subject) ? ev.subject : (body ?? '').split('\n')[0]) : body
+  let keyword = false
   if (isOptOutMessage(keywordText)) {
+    keyword = true
     await store.suppress(ev.channel, address, 'stop_keyword', `Inbound: "${(keywordText ?? '').slice(0, 50)}"`)
     if (ev.channel === 'whatsapp') {
       patch.whatsapp_consent = 'opted_out'; patch.whatsapp_consent_at = ev.at; patch.whatsapp_consent_source = 'stop_keyword'
@@ -286,12 +293,18 @@ async function handleInbound(store: MessagingStore, cfg: MessagingConfig, ev: Ex
       patch.email_consent = 'opted_out'; patch.email_consent_at = ev.at; patch.email_consent_source = 'reply_keyword'
     }
   } else if (ev.channel === 'whatsapp' && isOptInMessage(body)) {
+    keyword = true
     await store.unsuppress('whatsapp', address, ['stop_keyword', 'unsubscribed'])
     patch.whatsapp_consent = 'opted_in'; patch.whatsapp_consent_at = ev.at; patch.whatsapp_consent_source = 'whatsapp_keyword'
     await sendWhatsAppText(cfg, address, 'You are subscribed to updates from us. Reply STOP at any time to unsubscribe.')
   }
 
   await store.updateContact(contact.id, patch)
+
+  if (!keyword && hooks.onInbound) {
+    try { await hooks.onInbound({ ...contact, ...patch }, ev.channel, body) }
+    catch (e) { console.error('[messaging] inbound hook failed', e) }
+  }
 }
 
 async function handleStatus(store: MessagingStore, ev: Extract<NormalizedEvent, { kind: 'status' }>) {

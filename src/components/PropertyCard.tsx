@@ -4,12 +4,17 @@ import { MapPin, Bed, Bath, Maximize2, Star, ArrowRight } from 'lucide-react'
 import type { Property } from '@/types'
 import { formatPrice } from '@/lib/format'
 import { goldenVisaLikely } from '@/lib/purchase-costs'
+import { whatsappInquiryText, whatsappLink } from '@/lib/sales/core'
+import { FaWhatsapp } from 'react-icons/fa6'
 
 const statusConfig: Record<Property['status'], { label: string; className: string }> = {
   available: { label: 'Available', className: 'bg-emerald-500 text-white'  },
   sold:      { label: 'Sold',      className: 'bg-red-500 text-white'      },
   rented:    { label: 'Rented',    className: 'bg-amber-500 text-white'    },
 }
+
+const WA_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '').replace(/\D/g, '')
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
 export default function PropertyCard({ property: p, priority = false }: { property: Property; priority?: boolean }) {
   const status = statusConfig[p.status] ?? statusConfig.available
@@ -91,13 +96,25 @@ export default function PropertyCard({ property: p, priority = false }: { proper
           </div>
         )}
 
+        <div className="mt-auto flex gap-2">
         <Link
           href={`/properties/${p.slug ?? p.id}`}
-          className="mt-auto flex items-center justify-center gap-2 py-2.5 w-full rounded-xl border-2 border-emerald-800 text-emerald-800 font-semibold text-sm hover:bg-emerald-800 hover:text-white transition-all duration-200 group/btn"
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-emerald-800 text-emerald-800 font-semibold text-sm hover:bg-emerald-800 hover:text-white transition-all duration-200 group/btn"
         >
           View Details
           <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
         </Link>
+        {WA_NUMBER && (
+          <a
+            href={whatsappLink(WA_NUMBER, whatsappInquiryText(p, SITE_URL))}
+            target="_blank" rel="noopener noreferrer"
+            aria-label={`Ask about ${p.title} on WhatsApp`} title="Ask on WhatsApp"
+            className="flex items-center justify-center w-11 rounded-xl bg-[#25D366] hover:bg-[#1ebe5b] text-white transition-colors"
+          >
+            <FaWhatsapp size={18} />
+          </a>
+        )}
+        </div>
       </div>
     </div>
   )

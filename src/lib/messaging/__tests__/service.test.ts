@@ -288,3 +288,22 @@ describe('lead form + import consent', () => {
     expect(store.contacts[0]).toMatchObject({ email_consent: 'opted_out', tags: ['old'] })
   })
 })
+
+describe('inbound hooks (sales automation entry point)', () => {
+  const wa = (body: string, id: string) => parseWhatsAppWebhook({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'messages', value: {
+    messages: [{ id, from: '971501234000', timestamp: '1761127200', type: 'text', text: { body } }] } }] }] })
+
+  it('runs for normal messages with the stored contact, but never for STOP/START keywords', async () => {
+    const calls: Array<string | null> = []
+    const hooks = { onInbound: async (_c: unknown, _ch: unknown, body: string | null) => { calls.push(body) } }
+    await applyEvents(store, cfg(), wa('Hi, Ref: IQ-ABC123', 'h1'), hooks)
+    await applyEvents(store, cfg(), wa('STOP', 'h2'), hooks)
+    await applyEvents(store, cfg(), wa('START', 'h3'), hooks)
+    expect(calls).toEqual(['Hi, Ref: IQ-ABC123'])
+  })
+
+  it('a failing hook does not break message storage', async () => {
+    await applyEvents(store, cfg(), wa('hello', 'h4'), { onInbound: async () => { throw new Error('boom') } })
+    expect(store.messages.filter(m => m.direction === 'inbound')).toHaveLength(1)
+  })
+})

@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { adminStore } from '@/lib/messaging/server'
 import { upsertContactFromLead } from '@/lib/messaging/service'
+import { messagingConfig } from '@/lib/messaging/config'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { processNewLead } from '@/lib/sales/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,6 +81,9 @@ export async function POST(request: NextRequest) {
       id: lead.id, name, email, phone, country_code: countryCode,
       consent_email: body.consent_email === true, consent_whatsapp: body.consent_whatsapp === true, ip,
     }).catch(e => console.error('[leads] audience upsert failed', e))
+    // Follow-up date, round-robin agent assignment + notification, acknowledgment to the customer.
+    await processNewLead(createAdminClient(), messagingConfig(), lead.id)
+      .catch(e => console.error('[leads] sales pipeline failed', e))
   }
 
   // Fire-and-forget admin notification (does not block response)

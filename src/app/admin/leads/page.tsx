@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2, MessageSquare, Phone as PhoneIcon, Mail, ExternalLink } from 'lucide-react'
+import { Loader2, MessageSquare, Phone as PhoneIcon, Mail, ExternalLink, Inbox, AlarmClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Lead, LeadStatus } from '@/types'
+import type { Agent } from '@/lib/sales/server'
+import { normalizePhone } from '@/lib/messaging/compliance'
+
+type LeadRow = Lead & { assigned_agent_id: string | null; next_follow_up_at: string | null; contact_id: string | null }
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
   new:       'bg-blue-100 text-blue-800',
@@ -29,21 +33,23 @@ function formatDate(d: string) {
 }
 
 export default function AdminLeadsPage() {
-  const [leads, setLeads]     = useState<Lead[]>([])
+  const [leads, setLeads]     = useState<LeadRow[]>([])
+  const [agents, setAgents]   = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
-  const [filter, setFilter]   = useState<LeadStatus | 'all'>('all')
+  const [filter, setFilter]   = useState<LeadStatus | 'all' | 'due'>('all')
+  const [agentFilter, setAgentFilter] = useState<string>('')
   const [updating, setUpdating] = useState<string | null>(null)
 
   const load = async () => {
     const supabase = createClient()
-    const { data, error: dbErr } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500)
+    const [{ data, error: dbErr }, a] = await Promise.all([
+      supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(500),
+      supabase.from('agents').select('*').order('name'),
+    ])
     if (dbErr) setError(dbErr.message)
-    setLeads((data as Lead[]) ?? [])
+    setLeads((data as LeadRow[]) ?? [])
+    setAgents((a.data as Agent[]) ?? [])
     setLoading(false)
   }
 
@@ -58,7 +64,21 @@ export default function AdminLeadsPage() {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
   }
 
-  const filtered = filter === 'all' ? leads : leads.filter(l => l.status === filter)
+  const patchLead = async (id: string, patch: Partial<LeadRow>) => {
+    setUpdating(id); setError(null)
+    const { error: dbErr } = await createClient().from('leads').update(patch).eq('id', id)
+    setUpdating(null)
+    if (dbErr) { setError(dbErr.message); return }
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
+  }
+
+  const nowIso = new Date().toISOString()
+  const isDue = (l: LeadRow) => !!l.next_follow_up_at && l.next_follow_up_at <= nowIso && !['converted', 'lost'].includes(l.status)
+  const filtered = leads
+    .filter(l => filter === 'all' ? true : filter === 'due' ? isDue(l) : l.status === filter)
+    .filter(l => !agentFilter || (agentFilter === 'none' ? !l.assigned_agent_id : l.assigned_agent_id === agentFilter))
+  const dueCount = leads.filter(isDue).length
+  const toLocalInput = (iso: string | null) => iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
   const counts = leads.reduce<Record<string, number>>((acc, l) => {
     acc[l.status] = (acc[l.status] ?? 0) + 1
     return acc
@@ -83,6 +103,20 @@ export default function AdminLeadsPage() {
         >
           All ({leads.length})
         </button>
+        <button
+          onClick={() => setFilter('due')}
+          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            filter === 'due' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+          }`}
+        >
+          <AlarmClock size={13} /> Follow-ups due ({dueCount})
+        </button>
+        <select value={agentFilter} onChange={e => setAgentFilter(e.target.value)} aria-label="Filter by agent"
+          className="ml-auto px-2 py-1.5 rounded-lg text-sm border border-slate-200 bg-white text-slate-600">
+          <option value="">All agents</option>
+          <option value="none">Unassigned</option>
+          {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
         {STATUSES.map(s => (
           <button
             key={s}
@@ -119,6 +153,7 @@ export default function AdminLeadsPage() {
                 <th className="text-left px-5 py-3 hidden md:table-cell">Channel</th>
                 <th className="text-left px-5 py-3 hidden lg:table-cell">Source</th>
                 <th className="text-left px-5 py-3">Status</th>
+                <th className="text-left px-5 py-3 hidden md:table-cell">Agent / Follow-up</th>
                 <th className="text-left px-5 py-3 hidden sm:table-cell">When</th>
                 <th className="text-right px-5 py-3"></th>
               </tr>
@@ -126,13 +161,14 @@ export default function AdminLeadsPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map(l => {
                 const Icon = CHANNEL_ICONS[l.preferred_contact ?? 'whatsapp'] ?? MessageSquare
-                const waNumber = (l.country_code ?? '') + l.phone.replace(/\D/g, '')
-                const waUrl = `https://wa.me/${waNumber.replace(/\D/g, '')}`
+                const e164 = normalizePhone(l.phone, (l.country_code ?? '').replace(/\D/g, '') || '971')
+                const waUrl = e164 ? `https://wa.me/${e164}` : null
+                const shownPhone = l.phone.trim().startsWith('+') || !l.country_code ? l.phone : `${l.country_code} ${l.phone}`
                 return (
                   <tr key={l.id} className="hover:bg-slate-50/60">
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-900">{l.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{l.country_code ?? ''} {l.phone}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{shownPhone}</p>
                       {l.email && <p className="text-xs text-slate-400 mt-0.5">{l.email}</p>}
                       {l.message && (
                         <p className="text-xs text-slate-500 mt-2 line-clamp-2 max-w-xs italic">"{l.message}"</p>
@@ -159,19 +195,39 @@ export default function AdminLeadsPage() {
                         ))}
                       </select>
                     </td>
+                    <td className="px-5 py-4 hidden md:table-cell space-y-1.5">
+                      <select value={l.assigned_agent_id ?? ''} disabled={updating === l.id} aria-label="Assigned agent"
+                        onChange={e => patchLead(l.id, { assigned_agent_id: e.target.value || null })}
+                        className="block text-xs border border-slate-200 rounded-lg px-2 py-1 w-40">
+                        <option value="">Unassigned</option>
+                        {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                      <input type="datetime-local" value={toLocalInput(l.next_follow_up_at)} aria-label="Next follow-up"
+                        onChange={e => patchLead(l.id, { next_follow_up_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                        className={`block text-xs border rounded-lg px-2 py-1 w-40 ${isDue(l) ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-slate-200 text-slate-600'}`} />
+                    </td>
                     <td className="px-5 py-4 text-slate-500 hidden sm:table-cell">{formatDate(l.created_at)}</td>
                     <td className="px-5 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <a href={`tel:${(l.country_code ?? '') + l.phone}`}
+                        <a href={e164 ? `tel:+${e164}` : `tel:${l.phone}`}
                           className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
                           title="Call">
                           <PhoneIcon size={14} />
                         </a>
-                        <a href={waUrl} target="_blank" rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
-                          title="WhatsApp">
-                          <MessageSquare size={14} />
-                        </a>
+                        {waUrl && (
+                          <a href={waUrl} target="_blank" rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
+                            title="WhatsApp">
+                            <MessageSquare size={14} />
+                          </a>
+                        )}
+                        {l.contact_id && (
+                          <Link href="/admin/messaging/inbox"
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
+                            title="Open inbox">
+                            <Inbox size={14} />
+                          </Link>
+                        )}
                         {l.property_id && (
                           <Link href={`/properties/${l.property_id}`} target="_blank"
                             className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"

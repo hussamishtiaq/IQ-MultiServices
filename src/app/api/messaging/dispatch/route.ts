@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { messagingConfig } from '@/lib/messaging/config'
 import { adminStore, errorResponse, requireAdmin } from '@/lib/messaging/server'
 import { dispatchChannel } from '@/lib/messaging/service'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPropertyAlerts, sendViewingReminders } from '@/lib/sales/server'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -21,7 +23,12 @@ async function run(request: NextRequest) {
       dispatchChannel(store, cfg, 'email'),
       dispatchChannel(store, cfg, 'whatsapp'),
     ])
-    return NextResponse.json({ email, whatsapp, dryRun: cfg.dryRun || undefined })
+    const db = createAdminClient()
+    const [viewingReminders, propertyAlerts] = await Promise.all([
+      sendViewingReminders(db, cfg).catch(e => { console.error('[dispatch] reminders', e); return -1 }),
+      sendPropertyAlerts(db, cfg).catch(e => { console.error('[dispatch] alerts', e); return -1 }),
+    ])
+    return NextResponse.json({ email, whatsapp, viewingReminders, propertyAlerts, dryRun: cfg.dryRun || undefined })
   } catch (e) {
     return errorResponse(e, 500)
   }

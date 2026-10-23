@@ -7,13 +7,18 @@ import type { Contact } from '@/types'
  * Sticky bottom-right floating WhatsApp + Call buttons on mobile/tablet.
  * Picks the first WhatsApp and first phone contact entry.
  */
-export default function FloatingCTAs({ contacts }: { contacts: Contact[] }) {
+export default function FloatingCTAs({ contacts, whatsappNumber, whatsappText }: { contacts: Contact[]; whatsappNumber?: string; whatsappText?: string }) {
   const whatsapp = contacts.find(c => c.platform.toLowerCase() === 'whatsapp')
   const phone    = contacts.find(c => c.platform.toLowerCase() === 'phone')
 
-  if (!whatsapp && !phone) return null
+  if (!whatsapp && !phone && !whatsappNumber) return null
 
-  const wa  = whatsapp ? safeContactHref(whatsapp.platform, whatsapp.value) : null
+  const waBase = whatsappNumber
+    ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}`
+    : whatsapp ? safeContactHref(whatsapp.platform, whatsapp.value) : null
+  const wa = waBase && whatsappText && waBase.startsWith('https://wa.me/')
+    ? `${waBase}?text=${encodeURIComponent(whatsappText)}`
+    : waBase
   const tel = phone    ? safeContactHref(phone.platform,    phone.value)    : null
 
   return (
