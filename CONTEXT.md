@@ -215,7 +215,7 @@ MESSAGING_DRY_RUN=false      # true = simulate sends (no provider calls)
 1. Run `0011_messaging.sql`; set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`
 2. Email: add a sending subdomain in Resend, publish its SPF/DKIM records + a DMARC record (`p=none` minimum), enable receiving (MX) for replies, add webhook → `https://<site>/api/webhooks/resend` with events sent/delivered/bounced/complained/received/opened
 3. WhatsApp: Meta Business verification → WhatsApp Business Account → phone number → system-user token. Webhook → `https://<site>/api/webhooks/whatsapp` (verify token = `WHATSAPP_VERIFY_TOKEN`), subscribe to `messages` and `phone_number_quality_update`. Create + get templates approved in WhatsApp Manager (add a "Stop promotions" quick reply to marketing templates)
-4. Scheduler: `vercel.json` runs dispatch every 10 min (Vercel Pro; Hobby allows daily only — otherwise point any external cron at `GET /api/messaging/dispatch` with `Authorization: Bearer $CRON_SECRET`)
+4. Scheduler: **not set up yet** (removed while messaging isn't live; Vercel Hobby only allows daily crons). When going live, point an external cron (e.g. cron-job.org) every 10 min at `GET /api/messaging/dispatch` with `Authorization: Bearer $CRON_SECRET`, or add a `vercel.json` cron on Vercel Pro. Until then use "Send next batch now" in Admin → Messaging
 5. Start with `MESSAGING_DRY_RUN=true`, launch a test campaign to your own addresses, then switch off
 
 ### Properties API (`/api/properties`)
