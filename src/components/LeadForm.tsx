@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2, CheckCircle2, MessageCircle, Phone as PhoneIcon, Mail } from 'lucide-react'
+import { useSiteFeatures } from '@/components/SiteFeaturesProvider'
 
 interface LeadFormProps {
   propertyId?: string
@@ -27,6 +28,7 @@ export default function LeadForm({
   const [message, setMessage] = useState(defaultMessage)
   const [channel, setChannel] = useState<'whatsapp' | 'phone' | 'email'>('whatsapp')
   const [website, setWebsite] = useState('')   // honeypot
+  const { marketing_consent: showConsent } = useSiteFeatures()
   const [consentWhatsapp, setConsentWhatsapp] = useState(false)
   const [consentEmail, setConsentEmail]       = useState(false)
   const [loading, setLoading] = useState(false)
@@ -46,7 +48,7 @@ export default function LeadForm({
       body: JSON.stringify({
         property_id: propertyId, project_id: projectId, area_id: areaId, source,
         name, phone, email, message, preferred_contact: channel, website,
-        consent_whatsapp: consentWhatsapp, consent_email: consentEmail,
+        consent_whatsapp: showConsent && consentWhatsapp, consent_email: showConsent && consentEmail,
       }),
     })
     setLoading(false)
@@ -135,7 +137,7 @@ export default function LeadForm({
         </div>
       </div>
 
-      <div className="space-y-1.5">
+      {showConsent && <div className="space-y-1.5">
         <label className="flex items-start gap-2 text-[11px] text-slate-500 leading-snug cursor-pointer">
           <input type="checkbox" checked={consentWhatsapp} onChange={e => setConsentWhatsapp(e.target.checked)}
             className="mt-0.5 accent-emerald-700" />
@@ -146,7 +148,7 @@ export default function LeadForm({
             className="mt-0.5 accent-emerald-700" />
           Email me property updates from IQ MultiServices. Unsubscribe anytime.
         </label>
-      </div>
+      </div>}
 
       {error && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">{error}</p>

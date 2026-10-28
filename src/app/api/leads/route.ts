@@ -6,6 +6,7 @@ import { upsertContactFromLead } from '@/lib/messaging/service'
 import { messagingConfig } from '@/lib/messaging/config'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { processNewLead } from '@/lib/sales/server'
+import { getSiteFeatures } from '@/lib/site-features.server'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,9 +78,11 @@ export async function POST(request: NextRequest) {
 
   // Add to the messaging audience with timestamped consent. Best-effort: never fail the lead.
   if (process.env.SUPABASE_SERVICE_ROLE_KEY && lead) {
+    // Consent ticks only count while the checkboxes are actually shown on the site.
+    const consentShown = (await getSiteFeatures()).marketing_consent
     await upsertContactFromLead(adminStore(), {
       id: lead.id, name, email, phone, country_code: countryCode,
-      consent_email: body.consent_email === true, consent_whatsapp: body.consent_whatsapp === true, ip,
+      consent_email: consentShown && body.consent_email === true, consent_whatsapp: consentShown && body.consent_whatsapp === true, ip,
     }).catch(e => console.error('[leads] audience upsert failed', e))
     // Follow-up date, round-robin agent assignment + notification, acknowledgment to the customer.
     await processNewLead(createAdminClient(), messagingConfig(), lead.id)

@@ -184,6 +184,13 @@ MESSAGING_DRY_RUN=false      # true = simulate sends (no provider calls)
 - Golden Visa badge on cards + detail is an *indicator* — real eligibility uses DLD valuation
 - Listings show Trakheesi permit + agent BRN when set; admin form warns when an available listing has no permit
 
+### Public feature switches (Admin → Appearance)
+- `src/lib/site-features.ts` lists the switches; stored in `site_settings` as `feature_<key>` = on/off (no migration needed)
+- Defaults: messaging-related features (WhatsApp buttons, viewing booking, property alerts, marketing opt-in checkboxes) **hidden**; calculator, Golden Visa badge, verified-listing box **visible**
+- Server: `getSiteFeatures()` (`site-features.server.ts`, `unstable_cache` tag `site-features`, 60s); saving via `/api/admin/features` calls `revalidateTag`, so changes are instant. Editing the rows directly in Supabase takes up to 60s
+- Client: root layout passes flags to `SiteFeaturesProvider`; components use `useSiteFeatures()`
+- Hidden features are enforced server-side too: `/api/viewings` and `/api/alerts` return 404, and `/api/leads` ignores consent ticks while the checkboxes are hidden
+
 ### Sales automation — `src/lib/sales/` (core.ts = pure + tested, server.ts = Supabase flows)
 - Listing ref `IQ-XXXXXX` = first 6 hex of the property UUID. "Ask on WhatsApp" buttons (cards, detail, floating CTA) prefill title + price + ref + URL
 - Inbound WhatsApp containing a ref → contact + lead (`source='whatsapp'`) + round-robin agent + verified listing summary (once per listing per 30 days). `VISIT` → booking link. Wired via `applyEvents(..., { onInbound })`

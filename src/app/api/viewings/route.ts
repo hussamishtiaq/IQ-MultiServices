@@ -4,10 +4,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { viewingSlots } from '@/lib/sales/core'
 import { bookViewing, bookedSlots } from '@/lib/sales/server'
 import { isUuid } from '@/lib/slug'
+import { getSiteFeatures } from '@/lib/site-features.server'
+
+const disabled = () => NextResponse.json({ error: 'Online viewing booking is not available right now.' }, { status: 404 })
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  if (!(await getSiteFeatures()).viewing_booking) return disabled()
   const propertyId = request.nextUrl.searchParams.get('property') ?? ''
   if (!isUuid(propertyId)) return NextResponse.json({ error: 'property is required' }, { status: 400 })
   try {
@@ -19,6 +23,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!(await getSiteFeatures()).viewing_booking) return disabled()
   const b = await request.json().catch(() => null) as {
     property_id?: string; scheduled_at?: string; name?: string; phone?: string; email?: string
     country_code?: string; notes?: string; website?: string

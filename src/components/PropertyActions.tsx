@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bell, CalendarDays, CheckCircle2, Loader2 } from 'lucide-react'
 import { FaWhatsapp } from 'react-icons/fa6'
 import type { Slot } from '@/lib/sales/core'
+import { useSiteFeatures } from '@/components/SiteFeaturesProvider'
 
 interface Props {
   propertyId: string
@@ -153,12 +154,21 @@ function PropertyAlert({ criteria, label }: { criteria: Record<string, unknown>;
   )
 }
 
-export default function PropertyActions(p: Props) {
+export default function PropertyActions(props: Props) {
+  const f = useSiteFeatures()
+  const p = {
+    ...props,
+    whatsappHref: f.whatsapp_buttons ? props.whatsappHref : null,
+    whatsappVisitHref: f.whatsapp_buttons ? props.whatsappVisitHref : null,
+    canBook: f.viewing_booking && props.canBook,
+  }
   const [open, setOpen] = useState<'book' | 'alert' | null>(null)
 
   useEffect(() => {
     if (p.canBook && new URLSearchParams(window.location.search).get('book') === '1') setOpen('book')
   }, [p.canBook])
+
+  if (!p.whatsappHref && !p.canBook && !f.property_alerts) return null
 
   return (
     <div id="book" className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-3 scroll-mt-24">
@@ -184,11 +194,11 @@ export default function PropertyActions(p: Props) {
           )}
         </div>
       )}
-      <button onClick={() => setOpen(o => o === 'alert' ? null : 'alert')}
+      {f.property_alerts && <button onClick={() => setOpen(o => o === 'alert' ? null : 'alert')}
         className="flex items-center justify-center gap-1.5 w-full text-xs font-medium text-slate-500 hover:text-emerald-700 pt-1">
         <Bell size={13} /> Alert me about similar properties
-      </button>
-      {open === 'alert' && <div className="pt-2 border-t border-slate-100"><PropertyAlert criteria={p.alertCriteria} label={p.alertLabel} /></div>}
+      </button>}
+      {f.property_alerts && open === 'alert' && <div className="pt-2 border-t border-slate-100"><PropertyAlert criteria={p.alertCriteria} label={p.alertLabel} /></div>}
     </div>
   )
 }

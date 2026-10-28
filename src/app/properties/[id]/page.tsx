@@ -18,6 +18,7 @@ import { PlatformIcon } from '@/lib/platform-icons'
 import { isUuid } from '@/lib/slug'
 import { goldenVisaLikely, toAed } from '@/lib/purchase-costs'
 import { describeSearch, propertyRef, whatsappInquiryText, whatsappLink } from '@/lib/sales/core'
+import { getSiteFeatures } from '@/lib/site-features.server'
 import type { Property, Contact, Review } from '@/types'
 
 async function getPropertyByIdOrSlug(param: string) {
@@ -84,6 +85,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
 
   if (contactsRes.error) console.error('contacts query failed:', contactsRes.error)
 
+  const features = await getSiteFeatures()
   const [waRes, areaRes] = await Promise.all([
     supabase.from('contacts').select('value').ilike('platform', 'whatsapp').order('order', { ascending: true }).limit(1),
     property.area_id ? supabase.from('areas').select('name').eq('id', property.area_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -204,7 +206,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                       {property.completion_status === 'off_plan' ? 'Off-plan' : 'Resale'}
                     </span>
                   )}
-                  {goldenVisaLikely(property) && (
+                  {features.golden_visa_badge && goldenVisaLikely(property) && (
                     <span title="Property investments of AED 2M+ (by DLD valuation) can qualify for the 10-year UAE Golden Visa"
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
                       <BadgeCheck size={11} /> Golden Visa eligible*
@@ -217,7 +219,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                   )}
                 </div>
 
-                <p className="text-[11px] text-slate-400 -mt-2 mb-3">Ref: {propertyRef(property.id)}</p>
+                {features.whatsapp_buttons && <p className="text-[11px] text-slate-400 -mt-2 mb-3">Ref: {propertyRef(property.id)}</p>}
 
                 {property.location && (
                   <div className="flex items-start gap-2 text-slate-600 text-sm mb-4">
@@ -253,7 +255,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                 )}
               </div>
 
-              {(property.permit_number || property.agent_brn) && (
+              {features.verified_listing && (property.permit_number || property.agent_brn) && (
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-xs text-slate-600 space-y-1.5">
                   <p className="flex items-center gap-1.5 font-semibold text-slate-800 text-sm"><ShieldCheck size={15} className="text-emerald-700" /> Verified listing</p>
                   {property.permit_number && <p>DLD Trakheesi permit: <b className="text-slate-800">{property.permit_number}</b></p>}
@@ -273,7 +275,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
                 canBook={property.status === 'available'}
               />
 
-              {property.listing_type === 'sale' && property.price != null && property.status === 'available' && (
+              {features.purchase_calculator && property.listing_type === 'sale' && property.price != null && property.status === 'available' && (
                 <PurchaseCalculator priceAed={toAed(property.price, property.currency)} offPlan={property.completion_status === 'off_plan'} />
               )}
 
@@ -329,7 +331,7 @@ export default async function PropertyDetailPage({ params }: { params: { id: str
           </div>
         </div>
       </main>
-      <FloatingCTAs contacts={contacts} whatsappNumber={waNumber || undefined} whatsappText={waAskText} />
+      <FloatingCTAs contacts={contacts} whatsappNumber={features.whatsapp_buttons ? waNumber || undefined : undefined} whatsappText={features.whatsapp_buttons ? waAskText : undefined} />
       <Footer />
     </>
   )

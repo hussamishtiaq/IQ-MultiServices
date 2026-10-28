@@ -3,12 +3,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { SearchCriteria } from '@/lib/sales/core'
 import { createSavedSearch } from '@/lib/sales/server'
 import { isUuid } from '@/lib/slug'
+import { getSiteFeatures } from '@/lib/site-features.server'
 
 export const dynamic = 'force-dynamic'
 
 const TYPES = ['apartment', 'villa', 'commercial', 'land', 'office']
 
 export async function POST(request: NextRequest) {
+  if (!(await getSiteFeatures()).property_alerts) return NextResponse.json({ error: 'Property alerts are not available right now.' }, { status: 404 })
   const b = await request.json().catch(() => null) as {
     name?: string; email?: string; phone?: string; channel?: string; consent?: boolean; website?: string
     criteria?: Record<string, unknown>

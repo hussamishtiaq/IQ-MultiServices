@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Building2, LayoutDashboard, Home, Briefcase, Phone, MapPin, MessageSquare,
   BarChart3, Boxes, Layers, Star, Settings, LogOut, Menu, X, Bell, ChevronRight,
-  Send, Inbox, Megaphone, Users, CalendarDays, UserCheck,
+  Send, Inbox, Megaphone, Users, CalendarDays, UserCheck, Palette,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -65,7 +65,10 @@ const groups = [
   },
   {
     label: 'ADMINISTRATION',
-    links: [{ href: '/admin/settings', label: 'Settings', icon: Settings, exact: false }],
+    links: [
+      { href: '/admin/appearance', label: 'Appearance', icon: Palette,  exact: false },
+      { href: '/admin/settings',   label: 'Settings',   icon: Settings, exact: false },
+    ],
   },
 ]
 

@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin, Bed, Bath, Maximize2, Star, ArrowRight } from 'lucide-react'
@@ -6,6 +8,7 @@ import { formatPrice } from '@/lib/format'
 import { goldenVisaLikely } from '@/lib/purchase-costs'
 import { whatsappInquiryText, whatsappLink } from '@/lib/sales/core'
 import { FaWhatsapp } from 'react-icons/fa6'
+import { useSiteFeatures } from '@/components/SiteFeaturesProvider'
 
 const statusConfig: Record<Property['status'], { label: string; className: string }> = {
   available: { label: 'Available', className: 'bg-emerald-500 text-white'  },
@@ -18,6 +21,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
 export default function PropertyCard({ property: p, priority = false }: { property: Property; priority?: boolean }) {
   const status = statusConfig[p.status] ?? statusConfig.available
+  const features = useSiteFeatures()
   const altText = [p.title, p.type, p.location].filter(Boolean).join(' — ')
 
   return (
@@ -52,7 +56,7 @@ export default function PropertyCard({ property: p, priority = false }: { proper
           </span>
         )}
 
-        {goldenVisaLikely(p) && (
+        {features.golden_visa_badge && goldenVisaLikely(p) && (
           <span className="absolute bottom-3 right-3 bg-yellow-400 text-yellow-950 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide shadow">
             Golden Visa
           </span>
@@ -104,7 +108,7 @@ export default function PropertyCard({ property: p, priority = false }: { proper
           View Details
           <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
         </Link>
-        {WA_NUMBER && (
+        {features.whatsapp_buttons && WA_NUMBER && (
           <a
             href={whatsappLink(WA_NUMBER, whatsappInquiryText(p, SITE_URL))}
             target="_blank" rel="noopener noreferrer"

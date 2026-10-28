@@ -4,6 +4,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from './providers'
 import RouteProgress from '@/components/RouteProgress'
+import { SiteFeaturesProvider } from '@/components/SiteFeaturesProvider'
+import { getSiteFeatures } from '@/lib/site-features.server'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
 
@@ -40,14 +42,17 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const features = await getSiteFeatures()
   return (
     <html lang="en" className={inter.variable}>
       <body className="font-sans">
         <Suspense fallback={null}>
           <RouteProgress />
         </Suspense>
-        <Providers>{children}</Providers>
+        <Providers>
+          <SiteFeaturesProvider value={features}>{children}</SiteFeaturesProvider>
+        </Providers>
       </body>
     </html>
   )
